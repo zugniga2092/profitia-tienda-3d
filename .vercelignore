@@ -1,0 +1,9 @@
+# Lo que NO se publica en la web
+.env*
+*.md
+LICENSE
+docs
+herramientas
+fotos
+.github
+node_modules

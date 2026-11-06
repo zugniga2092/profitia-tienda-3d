@@ -1,0 +1,20 @@
+# Claves y configuración local (NUNCA a GitHub)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencias y Vercel
+node_modules/
+.vercel/
+
+# Tus fotos originales sin procesar (pesan mucho; a la web solo van las de img/)
+fotos/
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+__pycache__/

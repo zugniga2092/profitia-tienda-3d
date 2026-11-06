@@ -1,0 +1,18 @@
+{
+  "name": "profitia-tienda-3d",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tienda 3D de camisetas con diseñador IA, probador con cámara y pedidos por WhatsApp. Por Profitia.",
+  "license": "MIT",
+  "author": "Profitia (https://profitia.digital)",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "node herramientas/servidor-local.mjs",
+    "check": "node herramientas/comprobar.mjs",
+    "ejemplos": "python herramientas/generar_ejemplos.py"
+  },
+  "dependencies": {
+    "@decartai/sdk": "0.2.14"
+  }
+}

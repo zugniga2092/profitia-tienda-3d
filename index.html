@@ -1,0 +1,1581 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tienda 3D</title>
+<link rel="icon" href="img/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/favicon-192.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta name="theme-color" content="#08080A">
+<meta name="description" content="Tienda 3D de camisetas: sala con graffiti y neones, camisetas en 3D, medidas, recomendador de talla, diseño con IA y pedido por WhatsApp.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sedgwick+Ave+Display&family=Pirata+One&family=Metal+Mania&family=Yellowtail&family=Permanent+Marker&family=Tilt+Neon&family=Geist:wght@400;500;600&display=swap">
+<style>
+  /* Un solo look deliberado: tienda de noche, neón y hormigón. */
+  :root{
+    color-scheme:dark;
+    --bg:#08080A; --glass:rgba(16,16,19,.62); --line:rgba(255,255,255,.10); --text:#F2F2F4; --muted:#9A9AA3;
+    --red:#FF2A4A; --violet:#8B3DFF; --ok:#2BD46A; --card:#111114;
+    --ui:"Geist",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  [hidden]{display:none!important}
+  html,body{height:100%}
+  body{margin:0;overflow:hidden;background:var(--bg);color:var(--text);font:14px/1.45 var(--ui);-webkit-font-smoothing:antialiased}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  :focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:6px}
+  #c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+  #c.hot{cursor:pointer}
+
+  /* Carga */
+  #loader{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:var(--bg);transition:opacity .8s}
+  #loader.out{opacity:0;pointer-events:none}
+  #loader .in{display:flex;flex-direction:column;align-items:center;gap:22px;width:min(420px,80vw)}
+  #loader img{width:100%;filter:drop-shadow(0 0 18px rgba(255,42,74,.7)) drop-shadow(0 0 2px #fff)}
+  #loader .bar{width:60%;height:2px;background:var(--line);border-radius:2px;overflow:hidden}
+  #loader .bar i{display:block;height:100%;width:0;background:var(--red);box-shadow:0 0 12px var(--red);transition:width .2s}
+  #loader small{color:var(--muted);letter-spacing:.3em;font-size:10px}
+
+  /* Cabecera y dock */
+  .top{position:fixed;left:0;right:0;top:0;z-index:40;display:flex;justify-content:center;
+    padding:calc(14px + env(safe-area-inset-top,0px)) 16px 10px;pointer-events:none}
+  .top img{height:30px;filter:drop-shadow(0 0 8px rgba(255,255,255,.35))}
+  .cartbtn{position:absolute;right:16px;top:calc(12px + env(safe-area-inset-top,0px));pointer-events:auto;
+    width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--glass);backdrop-filter:blur(10px);border:1px solid var(--line)}
+  .cartbtn b{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;
+    font:600 10.5px/18px var(--ui);text-align:center;padding:0 4px;box-shadow:0 0 10px var(--red)}
+  .cartbtn b[data-n="0"]{display:none}
+  .dock{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;
+    display:flex;gap:2px;padding:4px;border-radius:999px;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);max-width:calc(100% - 32px)}
+  .dock button{padding:9px 15px;border-radius:999px;font-weight:500;font-size:13px;color:#C9C9D0;white-space:nowrap;transition:background .2s,color .2s}
+  .dock button[aria-pressed="true"]{background:#fff;color:#0A0A0C}
+  .dock .i{width:36px;padding:9px 0;font-style:italic;font-family:Georgia,serif;font-weight:600}
+  .hint{position:fixed;left:16px;bottom:calc(28px + env(safe-area-inset-bottom,0px));z-index:39;font-size:11.5px;color:var(--muted);pointer-events:none;max-width:30ch}
+  #tip{position:fixed;z-index:45;pointer-events:none;padding:7px 11px;border-radius:10px;background:var(--glass);backdrop-filter:blur(10px);
+    border:1px solid var(--line);font-size:12px;white-space:nowrap;transform:translate(14px,14px);opacity:0;transition:opacity .15s}
+  #tip b{font-weight:600}#tip span{color:var(--muted);margin-left:8px;font-variant-numeric:tabular-nums}
+  #tip.on{opacity:1}
+
+  /* Ficha */
+  /* una sola fila del alto de la pantalla: si el panel es más alto (Haz tu estampado en un portátil), hace scroll dentro y no empuja nada fuera */
+  #detail{position:fixed;inset:0;z-index:42;display:grid;grid-template-columns:1fr minmax(300px,370px);grid-template-rows:minmax(0,1fr);gap:24px;
+    padding:calc(84px + env(safe-area-inset-top,0px)) 40px calc(32px + env(safe-area-inset-bottom,0px));
+    background:radial-gradient(70% 70% at 35% 50%,rgba(60,20,40,.55),rgba(6,6,8,.9));backdrop-filter:blur(18px);animation:fade .35s ease}
+  @keyframes fade{from{opacity:0}}
+  .viewer{position:relative;perspective:1600px;display:grid;place-items:center;touch-action:none;cursor:grab;min-height:0}
+  .viewer:active{cursor:grabbing}
+  .spinner{position:relative;width:min(100%,640px);max-height:100%;transform-style:preserve-3d}
+  .flip{position:absolute;left:50%;bottom:0;transform:translateX(-50%);z-index:2;display:flex;gap:7px;align-items:center;padding:10px 18px;border-radius:999px;
+    background:var(--glass);backdrop-filter:blur(10px);border:1px solid var(--line);font-weight:500;font-size:13px}
+  #dv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+  .face img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 30px 40px rgba(0,0,0,.6))}
+  .face.back{transform:rotateY(180deg)}
+  .nav{position:absolute;top:50%;width:40px;height:40px;margin-top:-20px;border-radius:50%;display:grid;place-items:center;background:var(--glass);border:1px solid var(--line)}
+  .nav.prev{left:0}.nav.next{right:0}
+  .close{position:fixed;left:20px;top:calc(18px + env(safe-area-inset-top,0px));z-index:43;display:flex;gap:6px;align-items:center;
+    padding:8px 14px 8px 10px;border-radius:999px;background:var(--glass);border:1px solid var(--line);font-weight:500;font-size:13px}
+  .count{position:absolute;left:0;bottom:0;font-size:11.5px;color:var(--muted)}
+  .card{align-self:center;max-height:100%;overflow-y:auto;box-sizing:border-box;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+  .card .cat{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--red)}
+  .card h2{margin:6px 0 6px;font:600 23px/1.15 var(--ui);letter-spacing:-.01em;text-wrap:balance}
+  .card .price{font:600 16px var(--ui);font-variant-numeric:tabular-nums}
+  .card .clr{font-size:12px;color:var(--muted);margin-top:2px}
+  .sizehead{display:flex;justify-content:space-between;margin:18px 0 8px;font-size:12px;font-weight:500}
+  .sizehead span{color:var(--muted);font-weight:400}
+  .sizes{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .sizes button{position:relative;padding:10px 0;border-radius:10px;border:1px solid var(--line);font-size:12.5px;font-weight:500;transition:all .15s}
+  .sizes button:hover{border-color:rgba(255,255,255,.3)}
+  .sizes button[aria-pressed="true"]{background:#fff;border-color:#fff;color:#0A0A0C}
+  .sizes button.fitme::after{content:"";position:absolute;top:4px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok)}
+  .tools{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
+  .tools button{padding:10px 6px;border-radius:10px;background:rgba(255,255,255,.06);font-size:12.5px;font-weight:500;display:flex;gap:6px;justify-content:center;align-items:center}
+  .tools button[aria-pressed="true"]{background:rgba(43,212,106,.16);color:#7BF0A5}
+  .rec{margin-top:10px;font-size:12px;color:#7BF0A5;background:rgba(43,212,106,.10);border-radius:10px;padding:8px 10px}
+  .custom{margin-top:12px;padding:12px;border-radius:14px;background:rgba(139,61,255,.1);border:1px solid rgba(139,61,255,.3);display:grid;gap:8px}
+  .upl{display:flex;gap:8px;align-items:center;justify-content:center;padding:11px;border-radius:10px;background:#fff;color:#0A0A0C;font-weight:600;font-size:13px;cursor:pointer}
+  .ia{display:grid;gap:6px}
+  .ia textarea{width:100%;box-sizing:border-box;min-height:54px;resize:none;padding:9px 10px;border-radius:10px;border:1px solid rgba(139,61,255,.45);
+    background:rgba(0,0,0,.35);color:var(--text);font:16px/1.35 var(--ui)}
+  .ia button{padding:11px;border-radius:10px;border:0;background:#8B3DFF;color:#fff;font-weight:600;font-size:13px;cursor:pointer}
+  .ia button:disabled{opacity:.6;cursor:wait}
+  .ia2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .ia2:has(button:not([hidden])){margin-top:0}
+  .ia .ia2 button{background:transparent;border:1px solid rgba(139,61,255,.55);color:var(--text);font-weight:500}
+  .ia .ia2 button[hidden]{display:none}
+  .ia .or{text-align:center;font-size:12px;color:var(--muted)}
+  .ia .aviso{font-size:12px;line-height:1.4;color:#F5D58A;background:rgba(245,190,60,.1);border:1px solid rgba(245,190,60,.3);border-radius:10px;padding:8px 10px}
+  .slider{display:grid;grid-template-columns:60px 1fr;align-items:center;font-size:12px;color:var(--muted)}
+  .slider input{accent-color:#8B3DFF}
+  .tryon{margin-top:6px;width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);font-size:12.5px;font-weight:500;display:flex;gap:6px;justify-content:center;align-items:center}
+  .add{margin-top:14px;width:100%;padding:14px;border-radius:999px;background:#fff;color:#0A0A0C;font-weight:600;transition:background .3s,color .3s}
+  .add.done{background:var(--ok);color:#04150A}
+  .viewcart{display:block;margin:10px auto 0;font-size:12.5px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+  .note-demo{margin-top:12px;font-size:11px;color:var(--muted)}
+  .measure{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;animation:fade .3s}
+  .measure text{font:600 24px var(--ui);fill:#0A0A0C}
+
+  /* Probador con cámara: recuadro vertical dentro de la ficha (no pantalla completa), la ficha sigue visible al lado */
+  #tryon{position:fixed;z-index:55;left:max(40px,calc((100vw - 410px) / 2 - 230px));top:calc(84px + env(safe-area-inset-top,0px));
+    width:min(440px,calc(100vw - 32px));aspect-ratio:3/4;max-height:calc(100vh - 120px);background:#000;border-radius:22px;overflow:hidden;
+    border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 6px rgba(255,255,255,.03);animation:fade .3s}
+  #tryOut{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%}
+  #tryOut.selfie{transform:scaleX(-1)}
+  .trymsg{position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);width:calc(100% - 48px);text-align:center;
+    padding:12px 14px;border-radius:12px;background:var(--glass);backdrop-filter:blur(10px);border:1px solid var(--line);font-size:13px}
+  .trymsg:empty{display:none}
+  .trybadge{position:absolute;left:12px;top:12px;padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);
+    font-size:11px;font-weight:600;letter-spacing:.06em;display:flex;gap:6px;align-items:center}
+  .trybadge i{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red)}
+  #tryClose{position:absolute;right:10px;top:10px;z-index:2}
+  .trybar{position:absolute;left:10px;right:10px;bottom:10px;display:flex;align-items:center;gap:8px;
+    padding:7px 8px;border-radius:16px;background:rgba(12,12,14,.7);backdrop-filter:blur(14px);border:1px solid var(--line)}
+  .trybar .nav{position:static;margin:0;width:34px;height:34px;flex:none}
+  .trybar img{width:42px;height:42px;object-fit:contain;border-radius:9px;background:#1C1C21;flex:none}
+  .tryinfo{display:flex;flex-direction:column;min-width:0;flex:1}
+  .tryinfo b{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tryinfo small{font-size:10.5px;color:var(--muted)}
+  .tryadd{padding:9px 13px;border-radius:999px;background:#fff;color:#0A0A0C;font-weight:600;font-size:12.5px;flex:none}
+  @media (max-width:760px){ #tryon{left:16px;top:calc(64px + env(safe-area-inset-top,0px));max-height:calc(100vh - 230px)} }
+
+  /* Carrito, talla, info */
+  .scrim{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);animation:fade .25s}
+  /* z-index por encima del fondo oscuro (.scrim, z 50): sin él, cada toque dentro caía en el fondo y cerraba la ventana */
+  .modal{position:absolute;z-index:51;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto;
+    background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;animation:fade .25s}
+  #cart .drawer{position:absolute;z-index:51;right:0;top:0;bottom:0;width:min(400px,100%);background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column;
+    padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px));animation:slide .35s cubic-bezier(.2,.8,.2,1)}
+  @keyframes slide{from{transform:translateX(100%)}}
+  .phead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .phead h3{margin:0;font:600 17px var(--ui)}
+  .x{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.07);display:grid;place-items:center}
+  .lines{flex:1;overflow:auto;display:flex;flex-direction:column;gap:12px}
+  .line{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--line)}
+  .thumb{width:64px;height:64px;border-radius:12px;background:#1C1C21;display:grid;place-items:center;padding:6px}
+  .thumb img{width:100%;height:100%;object-fit:contain}
+  .line .n{font-weight:500;font-size:13px;line-height:1.25}
+  .line .m{font-size:11.5px;color:var(--muted)}
+  .qty{display:flex;align-items:center;gap:8px;margin-top:6px}
+  .qty button{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);font-size:13px;line-height:1}
+  .line .p{font-weight:600;font-variant-numeric:tabular-nums;font-size:13px}
+  .empty{color:var(--muted);text-align:center;margin-top:40px}
+  .total{display:flex;justify-content:space-between;font-weight:600;font-size:15px;padding-top:14px;font-variant-numeric:tabular-nums}
+  .checkout{margin-top:12px;padding:14px;border-radius:999px;background:#fff;color:#0A0A0C;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin-top:10px;text-align:center}
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;font-size:12.5px;font-weight:500}
+  .field input{font:inherit;font-weight:400;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#18181C;color:var(--text)}
+  .field small{font-weight:400;color:var(--muted)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .seg button{padding:9px 0;border-radius:9px;border:1px solid var(--line);font-size:12.5px}
+  .seg button[aria-pressed="true"]{background:#fff;color:#0A0A0C;border-color:#fff}
+  .result{margin-top:14px;padding:14px;border-radius:14px;background:#18181C}
+  .result .big{font:600 16px var(--ui);margin-bottom:8px}
+  .result .big b{font-size:24px}
+  .cmp{display:grid;grid-template-columns:56px 1fr auto;gap:8px;align-items:center;font-size:12px;margin-top:6px;font-variant-numeric:tabular-nums}
+  .cmp .track{position:relative;height:8px;border-radius:4px;background:#2A2A30}
+  .cmp .g{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:#5C5C66}
+  .cmp .b{position:absolute;top:-3px;width:2px;height:14px;background:var(--ok);box-shadow:0 0 6px var(--ok)}
+  .apply{margin-top:12px;width:100%;padding:12px;border-radius:999px;background:#fff;color:#0A0A0C;font-weight:600}
+  #info p{margin:0 0 10px;color:#C9C9D0}
+  #info ul{margin:0;padding-left:18px;color:#C9C9D0}
+
+  /* Tablet en vertical (iPad…): en dos columnas la camiseta quedaba estrecha y con hueco encima → como en el móvil, apilado */
+  @media (min-width:761px) and (orientation:portrait){
+    #detail{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;gap:14px;padding:72px 24px calc(20px + env(safe-area-inset-bottom,0px))}
+    .card{align-self:end;justify-self:center;width:min(640px,100%);box-sizing:border-box;max-height:42vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  }
+  @media (max-width:760px){
+    #detail{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;gap:10px;padding:calc(62px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px))}
+    .card{padding:14px 14px 12px;align-self:end;max-height:46vh;overflow-y:auto;border-radius:18px;-webkit-overflow-scrolling:touch}
+    .card h2{font-size:17px;margin:2px 0 4px}
+    .card .cat{font-size:10px}
+    .sizehead{margin:10px 0 6px}
+    .sizes button{padding:8px 0}
+    .tools button{padding:9px 4px;font-size:12px}
+    .add{margin-top:10px;padding:13px}
+    .count{display:none}
+    .nav{width:34px;height:34px;margin-top:-17px}
+    .flip{bottom:4px;padding:8px 14px}
+    .dock{left:12px;right:12px;transform:none;max-width:none;overflow-x:auto;scrollbar-width:none;justify-content:flex-start}
+    .dock::-webkit-scrollbar{display:none}
+    .dock button{padding:10px 13px;font-size:14px;flex:none}
+    /* textos legibles en el móvil (mínimo ~13 px) */
+    .card .cat{font-size:11.5px}
+    .card h2{font-size:19px}
+    .card .price{font-size:17px}
+    .card .clr,.sizehead,.rec,.note,.line .m{font-size:13px}
+    .sizes button{font-size:14px;padding:10px 0}
+    .tools button,.tryon,.viewcart{font-size:13.5px}
+    .add,.checkout,.apply{font-size:15px}
+    #tip{font-size:13.5px}
+    .field,.field input,.seg button,.slider{font-size:14px}
+    .tryinfo b{font-size:14px}.tryinfo small{font-size:12px}
+    .line .n,.line .p{font-size:14px}
+    .hint{display:none}
+    .close{top:calc(14px + env(safe-area-inset-top,0px));left:12px}
+    .top img{height:22px}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<canvas id="c" aria-label="Tienda en 3D. Arrastra para mirar alrededor."></canvas>
+
+<div id="loader"><div class="in"><img src="img/logo-blanco.png" alt="" data-alt-marca><div class="bar"><i id="lbar"></i></div><small data-eslogan></small></div></div>
+
+<header class="top">
+  <img src="img/logo-blanco.png" alt="" data-alt-marca>
+  <button class="cartbtn" id="cartBtn" aria-label="Abrir carrito">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+    <b id="cartN" data-n="0">0</b>
+  </button>
+</header>
+
+<nav class="dock" aria-label="Zonas de la tienda">
+  <button data-z="entrada" aria-pressed="true">Entrada</button>
+  <button data-z="coleccion" aria-pressed="false">Colección</button>
+  <button data-z="drops" aria-pressed="false">Drops</button>
+  <button data-z="top" aria-pressed="false">Lo más top</button>
+  <button data-z="mural" aria-pressed="false">Mural</button>
+  <button data-z="estampado" aria-pressed="false">Estampado</button>
+  <button data-z="probador" aria-pressed="false">Probador</button>
+  <button class="i" id="infoBtn" aria-label="Cómo funciona">i</button>
+</nav>
+<div class="hint" id="hint">Anda con WASD o las flechas · arrastra para mirar · toca el suelo para ir</div>
+<div id="tip"></div>
+
+<section id="detail" hidden aria-label="Ficha de producto">
+  <button class="close" id="closeD"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>Volver</button>
+  <div class="viewer" id="viewer">
+    <canvas id="dv" aria-label="Camiseta en 3D. Arrastra para girarla."></canvas>
+    <button class="flip" id="flipBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 14-5.3L20 9"/><path d="M20 4v5h-5"/><path d="M20 12a8 8 0 0 1-14 5.3L4 15"/><path d="M4 20v-5h5"/></svg>Voltear</button>
+    <div class="spinner" id="spinner" hidden><div class="face front" id="fFront"></div><div class="face back" id="fBack"></div></div>
+    <button class="nav prev" id="prev" aria-label="Anterior"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="nav next" id="next" aria-label="Siguiente"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    <div class="count" id="count"></div>
+  </div>
+  <div class="card">
+    <div class="cat" id="dCat"></div>
+    <h2 id="dName"></h2>
+    <div class="price" id="dPrice"></div>
+    <div class="clr" id="dColor"></div>
+    <div class="sizehead">Elige talla <span>Corte oversize</span></div>
+    <div class="sizes" id="dSizes"></div>
+    <div class="tools">
+      <button id="measureBtn" aria-pressed="false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg>Medir la prenda</button>
+      <button id="fitBtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="6" r="3"/><path d="M6 21v-5a6 6 0 0 1 12 0v5"/></svg>¿Cuál es mi talla?</button>
+    </div>
+    <div class="custom" id="customBox" hidden>
+      <div class="seg" id="dLado" style="grid-template-columns:1fr 1fr" aria-label="Lado que estás diseñando">
+        <button type="button" data-lado="frente" aria-pressed="true">Delante</button><button type="button" data-lado="espalda" aria-pressed="false">Detrás</button>
+      </div>
+      <label class="upl" for="dFile"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v4h16v-4"/></svg>Sube tu diseño (PNG o JPG)</label>
+      <input type="file" id="dFile" accept="image/*" hidden>
+      <div class="ia">
+        <div class="or">o dile a <span data-marca></span> qué quieres y te ayuda a diseñarla</div>
+        <textarea id="dIdea" maxlength="200" placeholder='Ej.: ángel con alas y rayos "FE" (texto entre comillas)'></textarea>
+        <button id="dIA" type="button">✨ Diseñar mi camiseta</button>
+        <div class="ia2"><button id="dOtra" type="button" hidden>↻ Otra versión</button><button id="dNuevo" type="button" hidden>Empezar de cero</button></div>
+        <div class="aviso">⚠️ Los diseños los crea una herramienta de inteligencia artificial: cada resultado es distinto y puede variar. Es una guía; antes de estampar la revisamos contigo por WhatsApp.</div>
+      </div>
+      <label class="slider">Tamaño<input type="range" id="dSize" min="25" max="115" value="62"></label>
+      <label class="slider">Altura<input type="range" id="dOff" min="-14" max="30" value="0"></label>
+      <button type="button" class="viewcart" id="dQuitar" hidden>Dejar la espalda lisa</button>
+    </div>
+    <button class="tryon" id="tryBtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Pruébatela con tu cámara</button>
+    <div class="rec" id="rec" hidden></div>
+    <button class="add" id="addBtn">Añadir al carrito</button>
+    <button class="viewcart" id="viewCart" hidden>Ver carrito</button>
+  </div>
+</section>
+
+<section id="tryon" hidden aria-label="Probador con cámara">
+  <video id="tryOut" autoplay playsinline muted></video>
+  <div class="trybadge"><i></i>PROBADOR EN VIVO</div>
+  <div class="trymsg" id="tryMsg">Encendiendo la cámara…</div>
+  <div class="trybar">
+    <button class="nav" id="tryPrev" aria-label="Camiseta anterior"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <img id="tryThumb" alt="">
+    <div class="tryinfo"><b id="tryName"></b><small id="tryTime">Así te queda, en directo</small></div>
+    <button class="nav" id="tryNext" aria-label="Camiseta siguiente"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    <button class="tryadd" id="tryAdd">Añadir</button>
+  </div>
+  <button class="x" id="tryClose" aria-label="Cerrar probador">✕</button>
+</section>
+
+<div id="cart" hidden>
+  <div class="scrim" data-close></div>
+  <div class="drawer" role="dialog" aria-label="Carrito">
+    <div class="phead"><h3>Tu carrito</h3><button class="x" data-close aria-label="Cerrar">✕</button></div>
+    <div class="lines" id="lines"></div>
+    <div class="total"><span>Subtotal</span><span id="subtotal">0,00 €</span></div>
+    <button class="checkout" id="checkout">Pedir por WhatsApp</button>
+    <div class="note" id="note"></div>
+  </div>
+</div>
+
+<div id="fit" hidden>
+  <div class="scrim" data-close></div>
+  <div class="modal" role="dialog" aria-label="Encuentra tu talla">
+    <div class="phead"><h3>Encuentra tu talla</h3><button class="x" data-close aria-label="Cerrar">✕</button></div>
+    <form id="fitForm" novalidate>
+      <div class="row2">
+        <label class="field">Altura (cm)<input id="fAlt" type="number" inputmode="numeric" min="140" max="215" value="176"></label>
+        <label class="field">Peso (kg)<input id="fPeso" type="number" inputmode="numeric" min="40" max="160" value="74"></label>
+      </div>
+      <label class="field">Contorno de pecho (cm) <small>Opcional. Cinta métrica a la altura de las axilas; afina mucho el resultado.</small><input id="fPecho" type="number" inputmode="numeric" min="70" max="150" placeholder="p. ej. 98"></label>
+      <div class="field">Cómo te gusta que te quede
+        <div class="seg" id="fAjuste"><button type="button" data-v="ajustada" aria-pressed="false">Ajustada</button><button type="button" data-v="oversize" aria-pressed="true">Oversize</button><button type="button" data-v="muy" aria-pressed="false">Muy ancha</button></div>
+      </div>
+      <button class="apply" type="submit">Calcular mi talla</button>
+    </form>
+    <div class="result" id="fitResult" hidden></div>
+  </div>
+</div>
+
+<div id="info" hidden>
+  <div class="scrim" data-close></div>
+  <div class="modal" role="dialog" aria-label="Cómo funciona">
+    <div class="phead"><h3>Cómo moverte</h3><button class="x" data-close aria-label="Cerrar">✕</button></div>
+    <p>Estás dentro de la tienda. Mira a tu alrededor.</p>
+    <ul>
+      <li>Anda con WASD o las flechas, o toca el suelo para ir a ese punto. Arrastra para mirar alrededor.</li>
+      <li>La barra de abajo te lleva a cada zona; en el probador, toca una cortina para calcular tu talla.</li>
+      <li>Toca una camiseta para verla de cerca y gírala para ver la espalda.</li>
+      <li>Con «Medir la prenda» ves sus medidas en cm; con «¿Cuál es mi talla?» te la calculamos.</li>
+    </ul>
+  </div>
+</div>
+
+<script src="tienda.config.js"></script>
+<script src="catalog.js"></script>
+<script src="colgadas.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { Reflector } from "three/addons/objects/Reflector.js";
+
+/* ================= Datos ================= */
+const T = window.TIENDA || {};                        // tienda.config.js
+const BRAND = { name: T.nombre || "TU MARCA", currency: T.moneda || "EUR", locale: T.idioma || "es-ES" };
+// Textos de la marca en la página (los pone tienda.config.js)
+document.title = `${BRAND.name} · Tienda 3D`;
+document.querySelectorAll("[data-marca]").forEach(e => e.textContent = BRAND.name);
+document.querySelectorAll("[data-alt-marca]").forEach(e => e.alt = BRAND.name);
+document.querySelectorAll("[data-eslogan]").forEach(e => e.textContent = (T.eslogan || "").toUpperCase());
+// Precios: un estampado / delante y detrás. Igual en las personalizadas (tienda.config.js).
+// Orientativos: si el estampado es pequeño se ajusta hablando con el cliente por WhatsApp.
+const PRICE = T.precios?.unLado ?? 34.5, PRICE_2 = T.precios?.dosLados ?? 38.5;
+// Las que llevan estampado también en la espalda (tienda.config.js → conEspalda)
+const DOS_LADOS = T.conEspalda || [];
+const SIZES = ["S","M","L","XL","XXL"];
+/* Medidas en plano (cm) de la talla M de la camiseta oversize. PROVISIONAL: sustituir por la tabla real del taller.
+   Cada talla suma pecho +3, largo +2, manga +1. */
+const CHART = { pecho: 61, largo: 74, manga: 25 };
+const BLANK_BACK = "img/tees/blank-black.webp";        // espalda lisa para las camisetas que no llevan estampado detrás
+const COLL = { negras: "Colección", drops: "Drops · delante y detrás", top: "Lo más top", custom: "Haz tu estampado", ...(T.zonas || {}) };
+const TOP = T.destacadas || [];   // las mejores, en la pared "Lo más top" (tienda.config.js)
+
+const ITEMS = window.CATALOG.map(it => ({ ...it, price: DOS_LADOS.includes(it.id) ? PRICE_2 : PRICE, dosLados: DOS_LADOS.includes(it.id),
+  collection: TOP.includes(it.id) ? "top" : it.collection }));
+{ const ref = {};                                          // las personalizadas usan las fotos lisas (sin 3D generado)
+  for (const [c, name] of [["black", "negra"], ["white", "blanca"]]) ITEMS.push({ ...ref, id: "custom-" + c, name: "Tu estampado · camiseta " + name,
+    collection: "custom", color: c === "black" ? "Negro" : "Blanco", front: `img/tees/blank-${c}.webp`, back: `img/tees/blank-${c}.webp`,
+    custom: true, lado: "frente",
+    // Cada lado con su diseño: delante empieza con el logo de guía; detrás, lisa hasta que el cliente la diseñe
+    lados: { frente: { size: .62, off: 0 }, espalda: { size: 1.08, off: 0, ancla: "abajo" } } });
+  // Precio según los lados estampados: con espalda diseñada, 38,50 €
+  for (const it of ITEMS.filter(i => i.custom)) Object.defineProperty(it, "price", { get(){ return this.lados.espalda.design ? PRICE_2 : PRICE; } }); }
+// Camisetas con fotos colgadas reales (frente, espalda, lado): sustituyen al 3D generado
+for (const [id, c] of Object.entries(window.COLGADAS || {})){
+  let it = ITEMS.find(i => i.id === id);
+  if (!it){ it = { id, name: c.name, collection: c.collection, color: c.color, price: DOS_LADOS.includes(id) ? PRICE_2 : PRICE, dosLados: DOS_LADOS.includes(id) }; ITEMS.push(it); }
+  Object.assign(it, { photo: c, front: c.frente, back: c.espalda, aspect: c.frenteAspect, bodyL: c.bodyL, bodyR: c.bodyR, chestY: c.chestY });
+}
+for (const it of ITEMS.filter(i => i.custom)){
+  const c = it.color === "Blanco" ? "blanca" : "negra";
+  Object.assign(it, { photo: { frente: `img/colgadas/custom-${c}-frente.webp`, frenteAspect: 1087 / 1400,
+      espalda: `img/colgadas/custom-${c}-lisa.webp`, espaldaAspect: 1087 / 1400 },   // la espalda, lisa (no el logo de delante)
+    front: `img/colgadas/custom-${c}-frente.webp`, back: `img/colgadas/custom-${c}-lisa.webp`, lisa: `img/colgadas/custom-${c}-lisa.webp`,
+    aspect: 1087 / 1400, bodyL: .14, bodyR: .86, chestY: .5 });
+}
+const byZone = z => ITEMS.filter(i => i.collection === z);
+const money = n => new Intl.NumberFormat(BRAND.locale, { style:"currency", currency:BRAND.currency }).format(n);
+const D = id => document.getElementById(id);
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const mobile = matchMedia("(max-width: 760px), (pointer: coarse)").matches;
+
+/* ================= Render ================= */
+const canvas = D("c");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = .95;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x060607);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.12;
+
+const camera = new THREE.PerspectiveCamera(mobile ? 62 : 52, innerWidth / innerHeight, 0.05, 60);
+camera.rotation.order = "YXZ";
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.42, 0.28, 1.6);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+const manager = new THREE.LoadingManager();
+const texLoader = new THREE.TextureLoader(manager);
+manager.onProgress = (_, done, total) => { D("lbar").style.width = (done / total * 100) + "%"; };
+manager.onLoad = () => setTimeout(() => D("loader").classList.add("out"), 300);
+
+/* ================= Materiales ================= */
+const RW = 16, RD = 16, RH = 5;   // sala de 16 × 16 m y 5 m de alto
+function noiseCanvas(base, amp, size = 1024, blotches = 40){
+  const c = document.createElement("canvas"); c.width = c.height = size;
+  const x = c.getContext("2d"); x.fillStyle = base; x.fillRect(0, 0, size, size);
+  for (let i = 0; i < blotches; i++){
+    const r = 40 + Math.random() * 220, px = Math.random() * size, py = Math.random() * size;
+    const g = x.createRadialGradient(px, py, 0, px, py, r);
+    const a = (Math.random() * .08).toFixed(3);
+    g.addColorStop(0, Math.random() < .5 ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a * 1.6})`); g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2);
+  }
+  const d = x.getImageData(0, 0, size, size), p = d.data;
+  for (let i = 0; i < p.length; i += 4){ const n = (Math.random() - .5) * amp; p[i] += n; p[i+1] += n; p[i+2] += n; }
+  x.putImageData(d, 0, 0);
+  return c;
+}
+function canvasTex(c, rx = 1, ry = 1){
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t;
+}
+const concreteWall = new THREE.MeshStandardMaterial({ map: canvasTex(noiseCanvas("#1c1c20", 18), 3, 1), roughness: .92 });
+const chrome = new THREE.MeshStandardMaterial({ color: 0xe9edf1, metalness: 1, roughness: .1, envMapIntensity: 2.2 });
+const blackMatte = new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: .45, metalness: .2 });
+const neon = (hex, k = 4) => new THREE.MeshBasicMaterial({ color: new THREE.Color(hex).multiplyScalar(k), toneMapped: false });
+
+/* ================= Sala ================= */
+const room = new THREE.Group(); scene.add(room);
+// Suelo: espejo debajo + hormigón pulido semitransparente encima = suelo brillante que refleja los neones
+if (!mobile){
+  const mirror = new Reflector(new THREE.PlaneGeometry(RW, RD), {
+    textureWidth: Math.round(innerWidth * .6), textureHeight: Math.round(innerHeight * .6), color: 0x4a4a50 });
+  mirror.rotation.x = -Math.PI / 2; room.add(mirror);
+}
+const floorMat = new THREE.MeshStandardMaterial({ map: canvasTex(noiseCanvas("#151518", 16), 4, 4), roughness: .5, metalness: .1,
+  transparent: !mobile, opacity: mobile ? 1 : .88 });
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(RW, RD), floorMat);
+floor.rotation.x = -Math.PI / 2; floor.position.y = .003; floor.receiveShadow = true; room.add(floor);
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(RW, RD), new THREE.MeshStandardMaterial({ color: 0x070708, roughness: 1 }));
+ceil.rotation.x = Math.PI / 2; ceil.position.y = RH; room.add(ceil);
+function wall(mat, x, z, ry){
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(RW, RH), mat);
+  m.position.set(x, RH / 2, z); m.rotation.y = ry; m.receiveShadow = true; room.add(m); return m;
+}
+wall(concreteWall, 0, -RD / 2, 0);              // norte: colección negra
+wall(concreteWall, 0, RD / 2, Math.PI);         // sur: drops
+wall(concreteWall, -RW / 2, 0, Math.PI / 2);    // oeste: logo y caja
+const graffitiWall = wall(new THREE.MeshStandardMaterial({ color: 0x222226, roughness: .85 }), RW / 2, 0, -Math.PI / 2); // este: graffiti
+
+// Neones del techo: marco perimetral + tres líneas
+const tube = (len, mat, pos, rotY = 0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(len, .045, .045), mat); m.position.copy(pos); m.rotation.y = rotY; room.add(m); return m; };
+const white = neon("#f3f0ff", 2.6);
+const inset = 1.2, cy = RH - .08;
+tube(RW - inset * 2, white, new THREE.Vector3(0, cy, -RD / 2 + inset));
+tube(RW - inset * 2, white, new THREE.Vector3(0, cy, RD / 2 - inset));
+tube(RD - inset * 2, white, new THREE.Vector3(-RW / 2 + inset, cy, 0), Math.PI / 2);
+tube(RD - inset * 2, white, new THREE.Vector3(RW / 2 - inset, cy, 0), Math.PI / 2);
+for (const z of [-2.6, 0, 2.6]) tube(7.5, white, new THREE.Vector3(0, cy, z));
+// Zócalos de luz: rojo bajo los percheros, violeta bajo el graffiti
+tube(9, neon("#ff2a4a", 7), new THREE.Vector3(0, .02, -RD / 2 + .04)).scale.set(1, .5, .5);
+tube(9, neon("#ff2a4a", 7), new THREE.Vector3(0, .02, RD / 2 - .04)).scale.set(1, .5, .5);
+
+// Luces
+scene.add(new THREE.AmbientLight(0xffffff, .06));
+scene.add(new THREE.HemisphereLight(0xc8c8ff, 0x200a12, .12));
+function spot(color, intensity, from, to, shadow = false, angle = .55){
+  const s = new THREE.SpotLight(color, intensity, 0, angle, .7, 0);
+  s.position.set(...from); s.target.position.set(...to); scene.add(s, s.target);
+  if (shadow && !mobile){ s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -.0004; s.shadow.radius = 6; }
+  return s;
+}
+spot(0xffffff, 5.2, [0, 4.6, -3.6], [0, 1.4, -7.0], true, .55);
+spot(0xfff0e8, 2.2, [-3.5, 3.2, -4.5], [0, 1.3, -7.0], false, .6);
+spot(0xffffff, 6.5, [-3.6, 4.7, -4.4], [-7.4, 1.4, -4.4], true, .5);
+spot(0xfff0e8, 2.0, [-3.8, 3.2, -1.6], [-7.4, 1.2, -4.4], false, .6);
+
+spot(0xffffff, 3.4, [0, 4.6, 4.4], [0, 1.5, 7.6], true, .5);          // lo más top
+spot(0xffffff, 2.6, [5.2, 4.6, 4.6], [5.2, 1.5, 7.6], true, .5);       // haz tu estampado
+spot(0xffd9df, 1.6, [-5.4, 4.6, 4.6], [-5.4, 1.3, 7.4], false, .5);    // probador
+spot(0xffffff, 3.4, [3.4, 4.6, 0], [7.6, 1.6, 0], true, .75);
+spot(0xffffff, 1.6, [2.5, 4.6, -3.5], [8, 2.4, -2.5], false, .75);   // luz blanca sobre el mural (color real del cromo)
+spot(0xffffff, 1.6, [2.5, 4.6, 3.5], [8, 2.4, 2.5], false, .75);
+spot(0xff2a4a, 1.6, [-4, 4.5, 0], [-8, 2.6, 0], false, .6);
+const glowR = new THREE.PointLight(0xff2a4a, 2.2, 7, 1.2); glowR.position.set(-7, 3.2, 0); scene.add(glowR);
+
+/* ================= Graffiti (pintado en canvas) ================= */
+function graffiti(){
+  const W = 4096, H = 1280, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d");
+  x.drawImage(noiseCanvas("#1d1c21", 26, 1024, 60), 0, 0, W, H);
+  // nubes de spray
+  const cloud = (cx, cy, r, col, a) => { const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, col.replace("A", a)); g.addColorStop(1, col.replace("A", 0)); x.fillStyle = g; x.fillRect(cx - r, cy - r, r * 2, r * 2); };
+  cloud(900, 600, 900, "rgba(139,61,255,A)", .55); cloud(2300, 500, 1000, "rgba(255,42,74,A)", .38); cloud(3400, 760, 900, "rgba(40,110,255,A)", .42);
+  cloud(2000, 1150, 700, "rgba(255,180,0,A)", .14);
+  const speck = (n, col) => { x.fillStyle = col; for (let i = 0; i < n; i++){ const r = Math.random() * 2.4; x.beginPath(); x.arc(Math.random() * W, Math.random() * H, r, 0, 7); x.fill(); } };
+  speck(5000, "rgba(255,255,255,.18)"); speck(3000, "rgba(255,42,74,.35)"); speck(3000, "rgba(139,61,255,.4)");
+  // pieza principal
+  const word = BRAND.name;
+  let fs = 520; x.font = `${fs}px "Sedgwick Ave Display", "Permanent Marker", cursive`;
+  fs *= 3500 / x.measureText(word).width; x.font = `${fs}px "Sedgwick Ave Display", "Permanent Marker", cursive`;
+  const tx = W / 2, ty = 760; x.textAlign = "center"; x.textBaseline = "alphabetic"; x.lineJoin = "round";
+  x.save(); x.translate(tx, ty); x.rotate(-.045);
+  for (let i = 34; i > 0; i -= 2){ x.fillStyle = `rgb(${40 + i * 2},${10},${70 + i * 3})`; x.fillText(word, i * 1.1, i * 1.3); } // extrusión 3D
+  x.strokeStyle = "#0a0a0c"; x.lineWidth = 44; x.strokeText(word, 0, 0);
+  x.shadowColor = "#ff2a4a"; x.shadowBlur = 40; x.strokeStyle = "#ff2a4a"; x.lineWidth = 20; x.strokeText(word, 0, 0); x.shadowBlur = 0;
+  const g = x.createLinearGradient(0, -fs * .7, 0, fs * .1);
+  g.addColorStop(0, "#ffffff"); g.addColorStop(.42, "#d7dbe6"); g.addColorStop(.5, "#7f8799"); g.addColorStop(.62, "#e9ecf3"); g.addColorStop(1, "#9aa2b6");
+  x.fillStyle = g; x.fillText(word, 0, 0);
+  x.globalCompositeOperation = "source-atop"; x.fillStyle = "rgba(255,255,255,.55)";
+  for (let i = 0; i < 26; i++){ x.save(); x.rotate(-.5); x.fillRect(-1800 + i * 150, -fs, 14, fs * 2); x.restore(); } // brillos cromados
+  x.globalCompositeOperation = "source-over"; x.restore();
+  // chorreones
+  for (let i = 0; i < 38; i++){
+    const dx = 420 + Math.random() * 3260, dy = ty - 40 + Math.random() * 60 - (dx - tx) * -.045, len = 60 + Math.random() * 300;
+    x.strokeStyle = Math.random() < .6 ? "#ff2a4a" : "#c9cfdc"; x.lineWidth = 6 + Math.random() * 8; x.lineCap = "round";
+    x.beginPath(); x.moveTo(dx, dy); x.lineTo(dx + Math.random() * 4, dy + len); x.stroke();
+    x.fillStyle = x.strokeStyle; x.beginPath(); x.arc(dx, dy + len, x.lineWidth * .9, 0, 7); x.fill();
+  }
+  // firmas y tags secundarios
+  const tag = (t, px, py, size, col, rot, font = "Permanent Marker") => { x.save(); x.translate(px, py); x.rotate(rot); x.font = `${size}px "${font}", cursive`; x.fillStyle = col; x.shadowColor = col; x.shadowBlur = 12; x.fillText(t, 0, 0); x.restore(); };
+  tag(BRAND.name.slice(0, 3).toUpperCase(), 380, 300, 170, "#ffffff", -.12, "Sedgwick Ave Display");
+  tag("✝ ★", 3500, 260, 130, "#ff2a4a", .08);
+  tag(`since ${new Date().getFullYear()}`, 3300, 1120, 90, "#c9b6ff", -.05);
+  tag((T.eslogan || "").toUpperCase(), 640, 1140, 96, "#ffffff", .02);
+  tag("★", 3800, 420, 160, "#ffd34d", .2); tag("★", 260, 1000, 110, "#8b3dff", -.3);
+  tag("drip", 3720, 980, 120, "#2b6bff", -.15, "Sedgwick Ave Display");
+  // corona
+  x.save(); x.translate(2050, 140); x.strokeStyle = "#ffd34d"; x.lineWidth = 10; x.shadowColor = "#ffd34d"; x.shadowBlur = 18;
+  x.beginPath(); x.moveTo(-110, 60); x.lineTo(-90, -40); x.lineTo(-40, 20); x.lineTo(0, -60); x.lineTo(40, 20); x.lineTo(90, -40); x.lineTo(110, 60); x.closePath(); x.stroke(); x.restore();
+  return canvasTex(c);
+}
+
+/* ================= Rótulos de neón ================= */
+function neonSign(text, color, font, k = 5, w = 2048, h = 512){
+  const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d");
+  let fs = h * .62; x.font = `${fs}px ${font}`; const mw = x.measureText(text).width; if (mw > w * .92){ fs *= w * .92 / mw; x.font = `${fs}px ${font}`; }
+  x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = "#fff"; x.shadowColor = "#fff"; x.shadowBlur = 8;
+  x.fillText(text, w / 2, h / 2 + fs * .05);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshBasicMaterial({ map: t, color: new THREE.Color(color).multiplyScalar(k), transparent: true, depthWrite: false, toneMapped: false });
+}
+function addPlane(mat, w, h, pos, ry){ const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); m.position.set(...pos); m.rotation.y = ry; room.add(m); return m; }
+
+/* ================= Perchero cromado ================= */
+function rack(len, height){
+  const g = new THREE.Group(), r = .16, L = len / 2;
+  const path = new THREE.CurvePath();
+  const v = (a, b) => new THREE.Vector3(a, b, 0);
+  path.add(new THREE.LineCurve3(v(-L, 0), v(-L, height - r)));
+  path.add(new THREE.QuadraticBezierCurve3(v(-L, height - r), v(-L, height), v(-L + r, height)));
+  path.add(new THREE.LineCurve3(v(-L + r, height), v(L - r, height)));
+  path.add(new THREE.QuadraticBezierCurve3(v(L - r, height), v(L, height), v(L, height - r)));
+  path.add(new THREE.LineCurve3(v(L, height - r), v(L, 0)));
+  const m = new THREE.Mesh(new THREE.TubeGeometry(path, 400, .022, 14), chrome); m.castShadow = true; g.add(m);
+  for (const sx of [-L, L]){
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(.05, .2, .05, 32), chrome); foot.position.set(sx, .025, 0); g.add(foot);
+  }
+  return g;
+}
+function wallRail(len, height){
+  const g = new THREE.Group();
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, len, 16), chrome); bar.rotation.z = Math.PI / 2; bar.position.y = height; g.add(bar);
+  for (const sx of [-len / 2 + .1, len / 2 - .1]){ const arm = new THREE.Mesh(new THREE.CylinderGeometry(.015, .015, .32, 12), chrome); arm.rotation.x = Math.PI / 2; arm.position.set(sx, height, -.16); g.add(arm); }
+  return g;
+}
+
+/* ================= Camisetas 3D ================= */
+const TEE_H = .84;                       // alto de la camiseta en la escena (m)
+const SLEEVE_DROP = 0;                  // radianes que caen las mangas por su peso (casi verticales, pegadas al cuerpo)
+function sampleDepth(depth, u, v){       // u,v en 0-1, v hacia abajo
+  const n = 24, fx = Math.min(n - 1.001, u * (n - 1)), fy = Math.min(n - 1.001, v * (n - 1));
+  const x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0, at = (x, y) => depth[y * n + x];
+  return (at(x0, y0) * (1 - tx) + at(x0 + 1, y0) * tx) * (1 - ty) + (at(x0, y0 + 1) * (1 - tx) + at(x0 + 1, y0 + 1) * tx) * ty;
+}
+function teeGeometry(it, u0 = 0, u1 = 1){
+  const W = TEE_H * it.aspect, w = W * (u1 - u0), seg = 72, g = new THREE.PlaneGeometry(w, TEE_H, Math.max(12, Math.round(seg * (u1 - u0))), seg);
+  const shift = ((u0 + u1) / 2 - .5) * W;                 // el trozo recortado queda centrado bajo el gancho
+  { const uvA = g.attributes.uv, pA = g.attributes.position;
+    for (let i = 0; i < uvA.count; i++){ uvA.setX(i, u0 + uvA.getX(i) * (u1 - u0)); pA.setX(i, pA.getX(i) + shift); } }
+  const p = g.attributes.position, uv = g.attributes.uv;
+  // Arrugas propias de cada camiseta (semilla = su id): pliegues de caída desde los hombros + alguna arruga cruzada
+  let seed = [...it.id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const drape = Array.from({ length: 4 }, () => ({ f: 7 + rnd() * 9, ph: rnd() * 6.3, a: .007 + rnd() * .008, tilt: (rnd() - .5) * 1.4 }));
+  const creases = Array.from({ length: 3 }, () => ({ cu: .25 + rnd() * .5, cv: .35 + rnd() * .5, ang: (rnd() - .5) * 1.6, len: .12 + rnd() * .2, a: .006 + rnd() * .008 }));
+  for (let i = 0; i < p.count; i++){
+    const u = uv.getX(i), v = 1 - uv.getY(i), d = sampleDepth(it.depth, u, v);
+    let folds = 0;
+    for (const f of drape) folds += Math.sin((u + v * f.tilt * .08) * f.f + f.ph) * f.a * (.2 + v * v * 1.6);   // la tela cae: casi lisa en el pecho, pliegues hacia el bajo
+    for (const c of creases){
+      const du = u - c.cu, dv = v - c.cv, along = du * Math.cos(c.ang) + dv * Math.sin(c.ang), across = -du * Math.sin(c.ang) + dv * Math.cos(c.ang);
+      folds += c.a * Math.exp(-(across * across) / .0009) * Math.max(0, 1 - Math.abs(along) / c.len);
+    }
+    p.setZ(i, 0);                                                      // sin pliegues inventados: el realismo lo pone la foto   // volumen de una camiseta de verdad: fina, solo la caída y las arrugas
+    // Peso: las mangas caen desde el hombro (giro alrededor de la costura), como en una prenda colgada de verdad
+    const left = u < it.bodyL, right = u > it.bodyR;
+    if (left || right){
+      const edge = left ? it.bodyL : it.bodyR, out = Math.abs(u - edge);
+      const s = Math.min(1, out / .06), th = SLEEVE_DROP * s * s * (3 - 2 * s) * (left ? 1 : -1);
+      const px = (edge - .5) * W, py = TEE_H / 2 - TEE_H * .1, x = p.getX(i) - px, y = p.getY(i) - py;
+      p.setX(i, px + x * Math.cos(th) - y * Math.sin(th)); p.setY(i, py + x * Math.sin(th) + y * Math.cos(th));
+    }
+    // hombros que caen siguiendo la percha y bajo suelto que se abre un poco
+
+    // Cuerpo de prenda colgada: pegada a la percha arriba y con aire dentro abajo (delantera y espalda se separan hacia el bajo)
+    const uc = (it.bodyL + it.bodyR) / 2, hw = (it.bodyR - it.bodyL) / 2, tt = Math.min(1, Math.abs(u - uc) / hw);
+    const prof = Math.sqrt(Math.max(0, 1 - tt * tt));                 // sección de tubo: lleno en el centro, cerrado en los costados
+    p.setZ(i, (.012 + .024 * v) * prof);                               // aire dentro: pegada a la percha arriba, se abre un poco hacia el bajo; costados y mangas cerrados
+  }
+  if (shift){ const pA = g.attributes.position; for (let i = 0; i < pA.count; i++) pA.setX(i, pA.getX(i) - shift); }
+  g.computeVertexNormals(); return g;
+}
+const alphaCache = new Map();
+function alphaOf(img){
+  if (alphaCache.has(img)) return alphaCache.get(img);
+  const c = document.createElement("canvas"); c.width = c.height = 96; const x = c.getContext("2d", { willReadFrequently: true });
+  x.drawImage(img, 0, 0, 96, 96); const a = x.getImageData(0, 0, 96, 96).data; alphaCache.set(img, a); return a;
+}
+function loadTex(src){
+  const t = texLoader.load(src); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t;
+}
+const texCache = {}; const tex = src => texCache[src] || (texCache[src] = loadTex(src));
+function hanger(w){
+  // Los brazos de la percha van DENTRO de la camiseta (entre delante y espalda); por el cuello solo asoma el gancho cromado
+  const pts = [[-.2 * w, -.22], [-.1 * w, -.19], [0, -.17], [.1 * w, -.19], [.2 * w, -.22]].map(([a, b]) => new THREE.Vector3(a, b, 0));
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, .004, 8), chrome));
+  const hook = new THREE.CatmullRomCurve3([[0, -.17], [0, -.05], [.004, -.012], [.024, .006], [.012, .03], [-.012, .03], [-.024, .01]].map(([a, b]) => new THREE.Vector3(a, b, 0)));
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(hook, 48, .0058, 10), chrome));
+  const neck = new THREE.Mesh(new THREE.SphereGeometry(.011, 12, 8), chrome); neck.position.y = -.1; g.add(neck);
+  return g;
+}
+// Relieve de tela: punto de jersey (columnas finas) + grano de algodón. Se repite muchas veces sobre la camiseta.
+function fabricNormal(){
+  const N = 512, c = document.createElement("canvas"); c.width = c.height = N; const x = c.getContext("2d");
+  const img = x.createImageData(N, N), d = img.data;
+  for (let y = 0; y < N; y++) for (let i = 0; i < N; i++){
+    const o = (y * N + i) * 4;
+    const knit = Math.sin(i * Math.PI / 4) * .55 + Math.sin(y * Math.PI / 7 + (i % 8 < 4 ? 0 : Math.PI)) * .25;   // columnas de punto
+    const grain = (Math.random() - .5) * .5;
+    const nx = knit * .6 + grain * .4, ny = Math.sin(y * Math.PI / 7) * .3 + grain * .3;
+    d[o] = 128 + nx * 55; d[o + 1] = 128 + ny * 55; d[o + 2] = 235; d[o + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(9, 12); t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+const FABRIC = fabricNormal();
+const pickables = [];
+const PHOTO_H = .98;   // alto de la foto colgada (camiseta + gancho) en metros
+function makePhotoTee(it){
+  const group = new THREE.Group(), c = it.photo;
+  const depthMat = map => new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: .5 });
+  const plane = (src, asp) => {
+    const map = tex(src);
+    // La foto ya trae su luz de estudio: se muestra tal cual, sin que la tienda la apague ni la tiña
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(PHOTO_H * asp, PHOTO_H), new THREE.MeshBasicMaterial({ map, alphaTest: .5, color: new THREE.Color(.94, .94, .94) }));
+    m.position.y = -PHOTO_H / 2 + .03;              // la punta del gancho de la foto queda sobre la barra
+    m.castShadow = true; m.customDepthMaterial = depthMat(map);
+    m.userData = { item: it, map }; group.add(m); pickables.push(m);
+    return m;
+  };
+  const f = plane(c.frente, c.frenteAspect); f.position.z = .004; f.userData.full = true;
+  const b = plane(c.espalda || c.frente, c.espaldaAspect || c.frenteAspect); b.rotation.y = Math.PI; b.position.z = -.004; b.userData.full = true;
+  const sd = c.lado ? plane(c.lado, c.ladoAspect) : null; if (sd) sd.visible = false;
+  it.full = [f, b]; it.sideMesh = sd; it.group = group; it.w = PHOTO_H * c.frenteAspect;
+  return group;
+}
+function makeTee(it){
+  if (it.photo) return makePhotoTee(it);
+  const group = new THREE.Group(), w = TEE_H * it.aspect, geo = teeGeometry(it);
+  const mat = map => {
+    const m = new THREE.MeshStandardMaterial({ map, alphaTest: .5, roughness: .93, metalness: 0, envMapIntensity: .35, side: THREE.DoubleSide,
+      normalMap: FABRIC, normalScale: new THREE.Vector2(.28, .28),
+      emissiveMap: map, emissive: new THREE.Color(.1, .1, .1) });   // casi sin luz plana: que la sombra la haga la luz de la tienda
+    return m;
+  };
+  const depthMat = map => new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: .5 });
+  const fMap = tex(it.front), bMap = tex(it.back || BLANK_BACK);
+  const front = new THREE.Mesh(geo, mat(fMap)), back = new THREE.Mesh(geo, mat(bMap));
+  back.rotation.y = Math.PI;
+  for (const [m, map] of [[front, fMap], [back, bMap]]){
+    m.position.y = -(TEE_H / 2 + .1); m.position.z = 0; m.castShadow = true; m.receiveShadow = false; m.customDepthMaterial = depthMat(map);
+    m.userData = { item: it, map, full: true }; group.add(m); pickables.push(m);
+  }
+  it.full = [front, back];
+  const h = hanger(w); group.add(h); it.hangerArms = h.children[0];
+  it.group = group; it.w = w;
+  return group;
+}
+
+/* ================= Montaje de la tienda =================
+   Norte: perchero cromado grande con la colección negra, todas juntas y de lado.
+   Centro: isla con los drops. Este (graffiti): "Lo más top" + "Haz tu estampado".
+   Oeste: mostrador "Tu pedido" (lo que añades al carrito aparece doblado encima). Sur: probadores. */
+const ANGLED = -1.05;  // en los percheros cuelgan de lado, con la manga hacia ti, como en una tienda
+function placeTee(it, parent, x, y, z, ry, angled, idx){
+  if (it.photo?.lado){ ry = 0; angled = true; }     // con foto de lado: cuelga de perfil y se abre de frente al señalarla
+  const g = makeTee(it); g.position.set(x, y, z); g.rotation.y = ry; parent.add(g);
+  it.base = { x, z, ry }; it.cur = { ...it.base }; it.angled = angled; it.idx = idx; it.holder = parent;
+}
+const lacquer = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: .22, metalness: .35 });
+
+// Perchero de la colección negra
+const north = new THREE.Group(); north.position.set(0, 0, -RD / 2 + 1.05); room.add(north);
+north.add(rack(6.6, 1.98));
+byZone("negras").forEach((it, i, arr) => placeTee(it, north, (i - (arr.length - 1) / 2) * .48, 1.985, 0, ANGLED, true, i));
+
+// Isla central de los drops, sobre peana de mármol negro con filo de neón
+const island = new THREE.Group(); island.position.set(-RW / 2 + 1.05, 0, -4.4); island.rotation.y = Math.PI / 2; room.add(island);   // pared oeste: el centro de la tienda queda libre
+island.add(rack(3.8, 1.98));
+const marble = new THREE.Mesh(new THREE.BoxGeometry(4.3, .14, 1.4), new THREE.MeshStandardMaterial({ map: canvasTex(noiseCanvas("#0d0d10", 10, 512, 80), 2, 1), roughness: .12, metalness: .25 }));
+marble.position.y = .07; marble.receiveShadow = true; island.add(marble);
+for (const sz of [-.7, .7]){ const edge = new THREE.Mesh(new THREE.BoxGeometry(4.3, .012, .012), neon("#ff2a4a", 7)); edge.position.set(0, .008, sz); island.add(edge); }
+byZone("drops").forEach((it, i, arr) => placeTee(it, island, (i - (arr.length - 1) / 2) * .55, 1.985, 0, ANGLED, true, i));
+
+// Pared de graffiti: "Lo más top" (izquierda) y "Haz tu estampado" (derecha), en barras de pared, de frente
+function wallSection(items, xc){
+  const g = new THREE.Group(); g.position.set(xc, 0, RD / 2 - .34); g.rotation.y = Math.PI; room.add(g);
+  const sp = items.every(i => i.photo?.lado) ? .62 : 1.0;   // de lado van juntas; de frente, separadas
+  const len = items.length * sp + .4; g.add(wallRail(len, 2.0));
+  items.forEach((it, i) => placeTee(it, g, (i - (items.length - 1) / 2) * sp, 2.005, 0, 0, false, i));
+}
+wallSection(byZone("top"), 0);         // pared sur, en el centro: lo primero que ves al darte la vuelta
+wallSection(byZone("custom"), 5.2);    // a la izquierda (vista desde dentro)
+
+// Mostrador "Tu pedido"
+const counter = new THREE.Group(); counter.position.set(-RW / 2 + 1.6, 0, 0); counter.rotation.y = Math.PI / 2; room.add(counter);
+const body = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.02, .8), new THREE.MeshStandardMaterial({ color: 0x0b0b0d, roughness: .25, metalness: .4 }));
+body.position.y = .55; body.castShadow = true; counter.add(body);
+const top = new THREE.Mesh(new THREE.BoxGeometry(3.5, .04, .9), chrome); top.position.y = 1.07; counter.add(top);
+const under = new THREE.Mesh(new THREE.BoxGeometry(3.3, .02, .02), neon("#ff2a4a", 8)); under.position.set(0, .04, .41); counter.add(under);
+const counterHit = [body, top];
+const folded = new THREE.Group(); counter.add(folded);
+function renderCounter(){
+  // Lo que hay en la cesta aparece sobre el mostrador colgado en un expositor pequeño, girando despacio
+  folded.clear();
+  const unicos = [...new Map(cart.map(l => [l.id, l])).values()].slice(0, 4);
+  const N = unicos.length, SC = 1;                                    // tamaño real
+  unicos.forEach((l, n) => {
+    const it = ITEMS.find(a => a.id === l.id); if (!it) return;
+    const g = new THREE.Group(); g.position.set(N === 1 ? 0 : -1.25 + n * (2.5 / Math.max(1, N - 1)), 1.09, 0); folded.add(g);
+    // expositor: pie y barra cromados
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, 1.12, 12), chrome); pole.position.y = .56; g.add(pole);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(.12, .14, .015, 32), chrome); base.position.y = .008; g.add(base);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(.009, .009, .3, 10), chrome); arm.rotation.x = Math.PI / 2; arm.position.set(0, 1.12, .15); g.add(arm);
+    // la camiseta (foto de frente y de espalda, o el diseño del cliente), colgando del brazo
+    const spin = new THREE.Group(); spin.position.set(0, 1.12, .3); g.add(spin);
+    const ph = PHOTO_H * SC;
+    const face = (map, asp, back) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(ph * asp, ph), new THREE.MeshBasicMaterial({ map, alphaTest: .5, color: new THREE.Color(.94, .94, .94) }));
+      m.position.y = -ph / 2 + .015; m.position.z = back ? -.002 : .002; if (back) m.rotation.y = Math.PI; m.castShadow = true; spin.add(m);
+    };
+    const frontMap = it.composed ? Object.assign(new THREE.CanvasTexture(it.composed), { colorSpace: THREE.SRGBColorSpace }) : tex(it.photo?.frente || it.front);
+    const asp = it.photo?.frenteAspect || it.aspect || .78;
+    face(frontMap, asp, false);
+    face(tex(it.photo?.espalda || it.back || it.front), it.photo?.espaldaAspect || asp, true);
+    spin.rotation.y = n * 1.3;
+    g.userData.spin = spin;
+    if (l.qty > 1){                                                   // cuántas lleva
+      const c = document.createElement("canvas"); c.width = 128; c.height = 64; const x = c.getContext("2d");
+      x.fillStyle = "#fff"; x.font = "600 44px Geist, sans-serif"; x.textAlign = "center"; x.fillText("×" + l.qty, 64, 48);
+      const tag = new THREE.Mesh(new THREE.PlaneGeometry(.12, .06), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
+      tag.position.set(0, 1.2, .3); g.add(tag);
+    }
+  });
+}
+
+// Probadores (sur): cabinas negras con cortina de terciopelo; tocar la cortina abre "Encuentra tu talla"
+const curtains = [];
+const velvet = new THREE.MeshPhysicalMaterial({ color: 0x4d0712, roughness: .82, sheen: 1, sheenColor: new THREE.Color("#ff5a6e"), sheenRoughness: .45 });
+const BOOTHS = [-5.4];                 // un solo probador, en la esquina derecha (vista desde dentro)
+for (const bx of BOOTHS){
+  const g = new THREE.Group(); g.position.set(bx, 0, RD / 2 - .75); g.rotation.y = Math.PI; room.add(g);
+  for (const sx of [-.82, .82]){ const post = new THREE.Mesh(new THREE.BoxGeometry(.08, 2.7, 1.45), lacquer); post.position.set(sx, 1.35, 0); post.castShadow = true; g.add(post); }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(1.72, .14, 1.45), lacquer); beam.position.set(0, 2.72, 0); g.add(beam);
+  const cg = new THREE.PlaneGeometry(1.56, 2.5, 120, 1), cp = cg.attributes.position;
+  for (let i = 0; i < cp.count; i++) cp.setZ(i, Math.sin(cp.getX(i) * 36) * .03 + Math.sin(cp.getX(i) * 11) * .015);
+  cg.computeVertexNormals();
+  const curtain = new THREE.Mesh(cg, velvet); curtain.position.set(0, 1.33, .68); curtain.castShadow = true; g.add(curtain); curtains.push(curtain);
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(.014, .014, 1.62, 12), chrome); rod.rotation.z = Math.PI / 2; rod.position.set(0, 2.6, .7); g.add(rod);
+}
+
+/* ================= Moverse por la tienda ================= */
+const EYE = 1.62;
+const STOPS = {
+  entrada:  { pos: [0, EYE, 4.6], yaw: 0, pitch: -.03 },
+  coleccion:{ pos: [0, 1.55, -3.0], yaw: 0, pitch: -.06 },
+  drops:    { pos: [-2.6, 1.6, -4.4], yaw: Math.PI / 2, pitch: -.02 },
+  top:      { pos: [0, 1.58, 4.1], yaw: Math.PI, pitch: -.05 },
+  estampado:{ pos: [5.2, 1.58, 4.4], yaw: Math.PI, pitch: -.05 },
+  probador: { pos: [-5.4, EYE, 2.6], yaw: Math.PI, pitch: .03 },
+  mural:    { pos: [-2.5, 1.7, 0], yaw: -Math.PI / 2, pitch: .07 },
+};
+const HINTS = {
+  entrada: "Anda con WASD o las flechas · arrastra para mirar · toca el suelo para ir",
+  coleccion: "Pasa el ratón por el perchero · toca una camiseta",
+  drops: "Cada drop lleva estampado delante y detrás",
+  top: "Lo más top: pasa el ratón para abrirlas",
+  estampado: "Elige una camiseta y sube tu diseño",
+  mural: T.eslogan || "Mural",
+  probador: "Toca una cortina para calcular tu talla",
+};
+let yaw = 0, pitch = -.03, tYaw = 0, tPitch = -.03, fovZoom = 0;
+const camPos = new THREE.Vector3(...STOPS.entrada.pos), tPos = camPos.clone();
+camera.position.copy(camPos);
+const shortest = (from, to) => from + ((((to - from) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+// Si el camino cruza la isla central, se rodea por el lado más cercano (nadie atraviesa un mueble)
+let route = [];
+function walkTo(x, z){
+  const end = new THREE.Vector3(x, EYE, z), [x0, x1, z0, z1] = BLOCKS[1], m = .7;
+  const crosses = (a, b) => { for (let t = 0; t <= 1; t += .05){ const px = a.x + (b.x - a.x) * t, pz = a.z + (b.z - a.z) * t; if (px > x0 - m && px < x1 + m && pz > z0 - m && pz < z1 + m) return true; } return false; };
+  route = [];
+  if (false && crosses(camPos, end)){
+    const sx = (camPos.x + end.x) / 2 >= 0 ? x1 + 1.1 : x0 - 1.1;
+    route.push(new THREE.Vector3(sx, EYE, camPos.z > end.z ? z1 + .6 : z0 - .6), new THREE.Vector3(sx, EYE, camPos.z > end.z ? z0 - .6 : z1 + .6));
+  }
+  route.push(end); tPos.copy(route.shift());
+}
+function goTo(name){
+  const s = STOPS[name], p = [...s.pos];
+  if (innerWidth < innerHeight){                               // móvil en vertical: más cerca de lo que se mira, para que se vea grande
+    const adv = { entrada: 3.4, mural: 3.4, coleccion: 1.0, drops: 1.1, top: .5, estampado: .6, probador: .6 }[name] ?? .8;
+    p[0] += -Math.sin(s.yaw) * adv; p[2] += -Math.cos(s.yaw) * adv;
+  }
+  walkTo(p[0], p[2]); tPos.y = p[1]; route.forEach(r => r.y = p[1]);
+  tYaw = shortest(yaw, s.yaw); tPitch = s.pitch + (innerWidth < innerHeight ? .06 : 0); hovered = null;   // en vertical, un poco hacia arriba para que entren los letreros
+  document.querySelectorAll(".dock [data-z]").forEach(b => b.setAttribute("aria-pressed", b.dataset.z === name));
+  D("hint").textContent = HINTS[name];
+}
+function freeRoam(){ document.querySelectorAll(".dock [data-z]").forEach(b => b.setAttribute("aria-pressed", false)); }
+document.querySelectorAll(".dock [data-z]").forEach(b => b.onclick = () => goTo(b.dataset.z));
+// Obstáculos en planta (x0, x1, z0, z1) y límites de la sala
+const BLOCKS = [[-6.85, -5.95, -1.8, 1.8], [-7.8, -6.25, -6.6, -2.2], [-3.5, 3.5, -7.5, -6.45], ...BOOTHS.map(bx => [bx - .95, bx + .95, 6.35, 8])];
+function collide(p){
+  p.x = Math.max(-7.2, Math.min(6.9, p.x)); p.z = Math.max(-6.8, Math.min(7.3, p.z));
+  for (const [x0, x1, z0, z1] of BLOCKS){
+    const r = .35;
+    if (p.x > x0 - r && p.x < x1 + r && p.z > z0 - r && p.z < z1 + r){
+      const pen = [p.x - (x0 - r), (x1 + r) - p.x, p.z - (z0 - r), (z1 + r) - p.z], m = Math.min(...pen);
+      if (m === pen[0]) p.x = x0 - r; else if (m === pen[1]) p.x = x1 + r; else if (m === pen[2]) p.z = z0 - r; else p.z = z1 + r;
+    }
+  }
+}
+const keys = new Set();
+const modalOpen = () => !D("cart").hidden || !D("info").hidden || !D("fit").hidden || !D("detail").hidden;
+addEventListener("keydown", e => {
+  if (modalOpen() || e.target.closest?.("input, textarea")) return;
+  const k = e.key.toLowerCase();
+  if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)){ keys.add(k); e.preventDefault(); }
+});
+addEventListener("keyup", e => keys.delete(e.key.toLowerCase()));
+addEventListener("blur", () => keys.clear());
+
+/* ================= Interacción ================= */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let hovered = null, drag = null, moved = false;
+function cast(cx, cy){ ndc.set(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); }
+let hoverFace = "front";   // lado de la camiseta que se está señalando
+function pick(cx, cy){
+  cast(cx, cy);
+  for (const h of ray.intersectObjects(pickables, false)){
+    if (!h.object.visible) continue;
+    const img = h.object.userData.map.image; if (!img || !h.uv) continue;
+    const a = alphaOf(img), px = Math.min(95, Math.floor(h.uv.x * 96)), py = Math.min(95, Math.floor((1 - h.uv.y) * 96));
+    if (a[(py * 96 + px) * 4 + 3] > 120){
+      const it = h.object.userData.item;
+      // Siempre de frente al pasar el ratón (la otra mitad de la camiseta de lado enseñaba la espalda)
+      hoverFace = "front";
+      return h.distance < 9 ? it : null;
+    }
+  }
+  return null;
+}
+const overCurtain = (cx, cy) => { cast(cx, cy); return ray.intersectObjects(curtains, false).length > 0; };
+canvas.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY, yaw: tYaw, pitch: tPitch, t: performance.now() }; moved = false; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener("pointermove", e => {
+  if (drag){
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
+    if (moved){ tYaw = drag.yaw + dx * .0045; tPitch = Math.max(-.6, Math.min(.45, drag.pitch + dy * .0035)); freeRoam(); setTip(null); }
+    return;
+  }
+  const it = pick(e.clientX, e.clientY);
+  hovered = it; canvas.classList.toggle("hot", !!it || overCurtain(e.clientX, e.clientY));
+  setTip(it, e.clientX, e.clientY);
+});
+canvas.addEventListener("pointerup", e => {
+  const was = drag; drag = null; if (!was || moved || performance.now() - was.t > 900) return;
+  const it = pick(e.clientX, e.clientY);
+  if (it){ openDetail(it); return; }
+  if (overCurtain(e.clientX, e.clientY)){ D("fitBtn").onclick(); return; }
+  cast(e.clientX, e.clientY);
+  if (ray.intersectObjects(counterHit, false).length){ D("cart").hidden = false; return; }
+  cast(e.clientX, e.clientY);
+  const f = ray.intersectObject(floor, false)[0];
+  if (f){ const q = f.point.clone(); collide(q); walkTo(q.x, q.z); freeRoam(); D("hint").textContent = HINTS.entrada; }
+});
+canvas.addEventListener("pointerleave", () => { hovered = null; setTip(null); });
+canvas.addEventListener("wheel", e => { e.preventDefault(); fovZoom = Math.max(-18, Math.min(14, fovZoom + e.deltaY * .02)); }, { passive: false });
+function setTip(it, x, y){
+  const t = D("tip"); if (!it){ t.classList.remove("on"); return; }
+  t.innerHTML = it.custom ? `<b>✎ Personalizar</b><span>${it.color === "Blanco" ? "camiseta blanca" : "camiseta negra"} · ${money(it.price)}</span>` : `<b>${it.name}</b><span>${money(it.price)}</span>`; t.style.left = x + "px"; t.style.top = y + "px"; t.classList.add("on");
+}
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+});
+
+/* ================= Bucle ================= */
+const clock = new THREE.Clock(), fwd = new THREE.Vector3(), side = new THREE.Vector3();
+function frame(){
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime, k = reduced ? 1 : 1 - Math.exp(-dt * 3.2);
+  if (!D("detail").hidden){ renderDetail(); requestAnimationFrame(frame); return; }
+  let mv = 0, st = 0;
+  if (keys.has("w") || keys.has("arrowup")) mv += 1;
+  if (keys.has("s") || keys.has("arrowdown")) mv -= 1;
+  if (keys.has("a")) st -= 1;
+  if (keys.has("d")) st += 1;
+  if (keys.has("arrowleft")) tYaw += dt * 1.7;
+  if (keys.has("arrowright")) tYaw -= dt * 1.7;
+  const walking = mv || st;
+  if (walking){
+    fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw)); side.set(Math.cos(yaw), 0, -Math.sin(yaw));
+    route = []; tPos.copy(camPos).addScaledVector(fwd, mv * .45).addScaledVector(side, st * .45); tPos.y = EYE; collide(tPos);
+    freeRoam(); tPitch = Math.max(-.2, Math.min(.2, tPitch));
+  }
+  if (route.length && camPos.distanceTo(tPos) < .9) tPos.copy(route.shift());   // siguiente tramo del rodeo
+  if (walking) camPos.lerp(tPos, 1 - Math.exp(-dt * 6));
+  else { const dist = camPos.distanceTo(tPos), stepLen = Math.min(dist, Math.max(.6, dist * 2.2) * dt * (reduced ? 99 : 1.4)); if (dist > 1e-4) camPos.addScaledVector(tPos.clone().sub(camPos).normalize(), stepLen); }
+  camera.position.copy(camPos);
+  if (walking && !reduced) camera.position.y += Math.sin(t * 9) * .012;    // leve balanceo al andar
+  yaw += (tYaw - yaw) * k; pitch += (tPitch - pitch) * k;
+  camera.rotation.set(pitch, yaw, 0);
+  const fov = (innerWidth < innerHeight ? 58 : mobile ? 64 : 54) + fovZoom; if (Math.abs(camera.fov - fov) > .01){ camera.fov += (fov - camera.fov) * k; camera.updateProjectionMatrix(); }
+  // camisetas: la señalada se adelanta (y en la isla gira de frente); las vecinas le hacen sitio
+  for (const it of ITEMS){
+    if (!it.group) continue;
+    let tx = it.base.x, tz = it.base.z, tr = it.base.ry;
+    if (hovered && hovered.holder === it.holder){
+      const d = it.idx - hovered.idx;
+      if (d === 0){ tz = it.base.z + (it.angled ? .5 : .14); tr = it.sideMesh && hoverFace === "back" ? Math.PI : 0; }
+      else if (it.angled && Math.abs(d) <= 3) tx += Math.sign(d) * (.42 - (Math.abs(d) - 1) * .12);
+    }
+    const kk = reduced ? 1 : 1 - Math.exp(-dt * 4.5);   // un poco más despacio al tocarlas
+    it.cur.x += (tx - it.cur.x) * kk; it.cur.z += (tz - it.cur.z) * kk; it.cur.ry += (tr - it.cur.ry) * kk;
+    it.group.position.x = it.cur.x; it.group.position.z = it.cur.z;
+    if (it.photo && it.sideMesh){ const open = hovered === it; it.sideMesh.visible = !open; it.full.forEach(m => m.visible = open); }
+    it.group.rotation.y = it.cur.ry + (reduced ? 0 : Math.sin(t * .8 + it.idx * 1.7) * .028);
+    it.group.rotation.z = reduced ? 0 : Math.sin(t * .6 + it.idx) * .005;
+  }
+  for (const g of folded.children) if (g.userData.spin && !reduced) g.userData.spin.rotation.y += dt * .5;   // la cesta gira despacio
+  composer.render();
+  requestAnimationFrame(frame);
+}
+
+/* Fuentes primero (graffiti y rótulos se pintan con ellas), luego se monta y arranca */
+Promise.all(['100px "Sedgwick Ave Display"', '100px "Permanent Marker"', '100px "Tilt Neon"'].map(f => document.fonts.load(f).catch(() => {})))
+  .then(() => {
+    { const m = tex("img/mural.webp"); m.wrapS = m.wrapT = THREE.ClampToEdgeWrapping;
+      m.repeat.set(1, 3 / 3.2); m.offset.set(0, (1 - 3 / 3.2) / 2);             // el mural es 3:1 y la pared 3,2:1: recorte mínimo arriba y abajo
+      Object.assign(graffitiWall.material, { map: m, emissiveMap: m, emissive: new THREE.Color(.55, .55, .55), roughness: .6, metalness: .2 });
+      graffitiWall.material.color.set(0xffffff); graffitiWall.material.needsUpdate = true; }
+    const logoTex = tex("img/logo-blanco.png");
+    const logoMat = (c, k = 2.2) => new THREE.MeshBasicMaterial({ map: logoTex, color: new THREE.Color(c).multiplyScalar(k), transparent: true, depthWrite: false, toneMapped: false });
+    addPlane(logoMat("#ff2a4a", 8), 6.2, 6.2 / 2.805, [-RW / 2 + .03, 3.05, 0], Math.PI / 2);      // oeste, sobre el mostrador
+    // Norte: rótulo retroiluminado (letras de metal oscuro con halo en la pared), no neón, para no deslumbrar la ropa
+    const LW = 3.0, LH = LW / 2.805;
+    const halo = addPlane(new THREE.MeshBasicMaterial({ map: logoTex, color: new THREE.Color("#fff4ea").multiplyScalar(.75), transparent: true, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }),
+      LW * 1.035, LH * 1.06, [0, 3.3, -RD / 2 + .02], 0);
+    const li = new Image(); li.src = "img/logo-blanco.png";
+    li.onload = () => {                                      // halo = el logo desenfocado, como la luz que rebota en la pared
+      const pad = 160, c = document.createElement("canvas"); c.width = li.width + pad * 2; c.height = li.height + pad * 2;
+      const x = c.getContext("2d"); x.filter = "blur(26px)"; x.drawImage(li, pad, pad); x.filter = "blur(8px)"; x.drawImage(li, pad, pad);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+      halo.material.map = t; halo.material.needsUpdate = true;
+      halo.scale.set(c.width / li.width / 1.035, c.height / li.height / 1.06, 1);
+    };
+    const letters = addPlane(new THREE.MeshStandardMaterial({ map: logoTex, color: 0x1a1a1d, metalness: .85, roughness: .32, transparent: true, alphaTest: .35, envMapIntensity: 1.4 }),
+      LW, LH, [0, 3.3, -RD / 2 + .07], 0);
+    const wash = new THREE.SpotLight(0xfff1e6, 1.4, 0, .5, .9, 0); wash.position.set(0, 4.9, -RD / 2 + 1.4); wash.target.position.set(0, 3.4, -RD / 2); scene.add(wash, wash.target);
+    // "Drops" colgado del techo sobre la isla, con dos cables
+    const dropsSign = neonSign("Drops", "#ff2a4a", '"Tilt Neon", sans-serif', 9); dropsSign.side = THREE.DoubleSide;
+    addPlane(dropsSign, 2.2, .55, [-RW / 2 + .03, 3.1, -4.4], Math.PI / 2);
+    for (const bx of BOOTHS) addPlane(neonSign("probador", "#ff2a4a", '"Tilt Neon", sans-serif', 9), 1.2, .3, [bx, 3.05, RD / 2 - .75 - .74], Math.PI);
+    addPlane(neonSign("lo más top", "#c9b6ff", '"Tilt Neon", sans-serif', 4.5), 3.2, .7, [0, 3.0, RD / 2 - .03], Math.PI);
+    addPlane(neonSign("haz tu estampado", "#c9b6ff", '"Tilt Neon", sans-serif', 4.5), 2.8, .52, [5.2, 3.0, RD / 2 - .03], Math.PI);
+    addPlane(neonSign("tu pedido", "#ffffff", '"Tilt Neon", sans-serif'), 1.5, .34, [-RW / 2 + 2.02, .62, 0], Math.PI / 2);
+    goTo("entrada"); frame();
+  });
+
+/* ================= Ficha, medidas y talla ================= */
+let cur = null, size = "L", ang = 0, vel = 0, spinning = null, spinRaf = 0, measuring = false;
+let profile = { alt: 176, peso: 74, pecho: "", ajuste: "oversize" }, fitDone = false;
+try { const s = localStorage.getItem("me-fit"); if (s){ Object.assign(profile, JSON.parse(s)); fitDone = true; } } catch {}
+const EASE = { ajustada: 10, oversize: 22, muy: 32 };
+const measures = s => { const k = SIZES.indexOf(s) - 1; return { pecho: CHART.pecho + 3 * k, largo: CHART.largo + 2 * k, manga: CHART.manga + k }; };
+const bodyChest = () => +profile.pecho || Math.round(40 + .8 * profile.peso + .1 * (profile.alt - 175));
+const recommend = () => SIZES.find(s => measures(s).pecho * 2 >= bodyChest() + EASE[profile.ajuste]) || SIZES[SIZES.length - 1];
+const cm = n => String(n).replace(".", ",") + " cm";
+const imgTag = (src, alt = "") => `<img src="${src}" alt="${alt}" draggable="false">`;
+
+function openDetail(it){
+  cur = it; setTip(null); hovered = null;
+  const list = byZone(it.collection), rec = fitDone ? recommend() : null;
+  D("fFront").innerHTML = imgTag(it.composedURL || it.front, it.name + ", delante"); D("fBack").innerHTML = imgTag(it.back || BLANK_BACK, it.name + ", espalda");
+  D("customBox").hidden = !it.custom;
+  if (it.custom){ it.lado = "frente"; syncLado(it); if (!it.lados.frente.canvas) compose(it, "frente");
+    if (it.lados.espalda.url) D("fBack").innerHTML = imgTag(it.lados.espalda.url, it.name + ", espalda"); }
+  D("spinner").style.aspectRatio = it.aspect;
+  D("dCat").textContent = COLL[it.collection]; D("dName").textContent = it.name;
+  D("dPrice").textContent = money(it.price); D("dColor").textContent = `${it.color} · ${it.custom ? (conEspalda(it) ? "tu diseño delante y detrás" : "tu diseño delante, espalda lisa") : it.dosLados ? "estampado delante y detrás" : "espalda lisa"}`;
+  D("count").textContent = `${list.indexOf(it) + 1} de ${list.length} · arrastra para girar`;
+  size = rec || "L";
+  D("dSizes").innerHTML = SIZES.map(s => `<button aria-pressed="${s === size}" data-s="${s}" class="${s === rec ? "fitme" : ""}">${s}</button>`).join("");
+  D("rec").hidden = !rec; D("rec").textContent = rec ? `Tu talla recomendada: ${rec} (punto verde)` : "";
+  resetAdd();
+  // Siempre de frente: si se abría tocando la espalda, esa y las siguientes salían de espaldas
+  D("detail").hidden = false; setMeasuring(false); showIn3D(it);
+}
+function closeDetail(){ D("detail").hidden = true; setMeasuring(false); }
+
+/* Visor 3D de la ficha: la misma camiseta de la tienda (con su volumen, arrugas y percha) en un estudio con luz suave */
+const dvCanvas = D("dv");
+const dvR = new THREE.WebGLRenderer({ canvas: dvCanvas, antialias: true, alpha: true });
+dvR.setPixelRatio(Math.min(devicePixelRatio, 2)); dvR.toneMapping = THREE.ACESFilmicToneMapping; dvR.toneMappingExposure = 1.05;
+const dvScene = new THREE.Scene();
+dvScene.environment = new THREE.PMREMGenerator(dvR).fromScene(new RoomEnvironment(), .04).texture;
+dvScene.environmentIntensity = .5;
+const key = new THREE.DirectionalLight(0xffffff, 2.6); key.position.set(-1.2, 1.4, 2.5); dvScene.add(key);
+const rimL = new THREE.DirectionalLight(0xff4d6a, 1.4); rimL.position.set(2, .6, -2.2); dvScene.add(rimL);
+const rimR = new THREE.DirectionalLight(0x8b5dff, 1.2); rimR.position.set(-2, .3, -2); dvScene.add(rimR);
+dvScene.add(new THREE.AmbientLight(0xffffff, .5));
+const fill = new THREE.DirectionalLight(0xffffff, .9); fill.position.set(1.6, .4, 2); dvScene.add(fill);
+const dvCam = new THREE.PerspectiveCamera(30, 1, .05, 20); dvCam.position.set(0, .02, 2.05);
+let dvObj = null, dvRot = 0, dvVel = 0, dvDrag = null, dvFlipTo = null, dvFit = null, dvFitDone = false;
+function showIn3D(it){
+  if (dvObj) dvScene.remove(dvObj);
+  dvObj = new THREE.Group();                       // comparte geometría y texturas con la de la tienda
+  for (const ch of it.group.children){
+    if (ch.userData?.item && !ch.userData.full) continue;            // la malla de perfil no va al visor
+    const m = ch.userData?.item ? new THREE.Mesh(ch.geometry, ch.material) : ch.clone();
+    m.position.copy(ch.position);
+    m.position.copy(ch.position); m.rotation.copy(ch.rotation); dvObj.add(m);
+  }
+  dvObj.position.set(0, it.photo ? PHOTO_H / 2 - .03 : TEE_H / 2 + .06, 0); dvObj.rotation.set(0, 0, 0);
+  const pivot = new THREE.Group(); pivot.add(dvObj); dvScene.add(pivot); dvObj = pivot;
+  const box = new THREE.Box3().setFromObject(pivot), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  dvFit = { w: size.x, h: size.y, cy: c.y }; dvFitDone = false;
+  dvRot = 0; dvVel = 0; dvDrag = null; dvFlipTo = null;   // se abre quieta y de frente
+}
+function renderDetail(){
+  const w = dvCanvas.clientWidth, h = dvCanvas.clientHeight;
+  if (!w || !h) return;
+  if (dvCanvas.width !== Math.round(w * dvR.getPixelRatio()) || dvCanvas.height !== Math.round(h * dvR.getPixelRatio())){
+    dvR.setSize(w, h, false); dvCam.aspect = w / h; dvCam.updateProjectionMatrix(); dvFitDone = false;
+  }
+  if (dvFit && !dvFitDone){                                   // encuadre: que entre entera a lo alto y a lo ancho (en móvil manda el ancho)
+    const t = Math.tan(THREE.MathUtils.degToRad(dvCam.fov / 2));
+    const dist = Math.max((dvFit.h / 2) / t, (dvFit.w / 2) / (t * dvCam.aspect)) * 1.1;
+    dvCam.position.set(0, dvFit.cy, dist); dvCam.lookAt(0, dvFit.cy, 0); dvFitDone = true;
+  }
+  if (dvFlipTo !== null){ dvRot += (dvFlipTo - dvRot) * (reduced ? 1 : .14); if (Math.abs(dvFlipTo - dvRot) < .002){ dvRot = dvFlipTo; dvFlipTo = null; } }
+  else if (!dvDrag){ dvRot += dvVel; dvVel *= .85; if (Math.abs(dvVel) < .001) dvVel = 0; }   // al soltar frena enseguida
+  if (dvObj) dvObj.rotation.y = dvRot;
+  dvR.render(dvScene, dvCam);
+}
+dvCanvas.addEventListener("pointerdown", e => { dvDrag = { x: e.clientX }; dvVel = 0; dvCanvas.setPointerCapture(e.pointerId); });
+dvCanvas.addEventListener("pointermove", e => { if (!dvDrag) return; if (e.buttons === 0){ dvDrag = null; dvVel = 0; return; } const dx = e.clientX - dvDrag.x; dvDrag.x = e.clientX; dvRot += dx * .011; dvVel = dx * .011; });
+for (const ev of ["pointerup", "pointercancel", "lostpointercapture", "pointerleave"]) dvCanvas.addEventListener(ev, () => { dvDrag = null; });
+// Voltear: media vuelta exacta para ver la espalda (y otra para volver al frente)
+D("flipBtn").onclick = () => { if (measuring) setMeasuring(false); dvVel = 0; dvFlipTo = Math.round(dvRot / Math.PI) * Math.PI + Math.PI; };
+function setMeasuring(on){
+  measuring = on; D("measureBtn").setAttribute("aria-pressed", on);
+  D("spinner").hidden = !on; D("dv").hidden = on; D("flipBtn").hidden = on;
+  if (on){ ang = 0; D("spinner").style.transform = "rotateY(0deg)"; }
+  drawMeasure();
+}
+function step(dir){ const list = byZone(cur.collection); openDetail(list[(list.indexOf(cur) + dir + list.length) % list.length]); }
+function spin(){
+  if (!spinning){ ang += vel; vel *= .94; }
+  D("spinner").style.transform = `rotateY(${ang}deg)`;
+  spinRaf = (spinning || Math.abs(vel) > .02) ? requestAnimationFrame(spin) : 0;
+  if (!spinRaf && !spinning && !reduced){ const snap = Math.round(ang / 180) * 180; if (Math.abs(snap - ang) > .5){ vel = (snap - ang) * .06; spinRaf = requestAnimationFrame(spin); } }
+}
+const viewer = D("viewer");
+viewer.addEventListener("pointerdown", e => { if (e.target.closest("button") || measuring) return; spinning = { x: e.clientX }; vel = 0; viewer.setPointerCapture(e.pointerId); if (!spinRaf) spinRaf = requestAnimationFrame(spin); });
+viewer.addEventListener("pointermove", e => { if (!spinning) return; const dx = e.clientX - spinning.x; spinning.x = e.clientX; ang += dx * .55; vel = dx * .55; });
+viewer.addEventListener("pointerup", () => { spinning = null; if (!spinRaf) spinRaf = requestAnimationFrame(spin); });
+D("prev").onclick = () => step(-1); D("next").onclick = () => step(1); D("closeD").onclick = closeDetail;
+D("dSizes").onclick = e => { const b = e.target.closest("button"); if (!b) return; size = b.dataset.s;
+  D("dSizes").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); resetAdd(); drawMeasure(); };
+function resetAdd(){ D("addBtn").classList.remove("done"); D("addBtn").textContent = "Añadir al carrito"; D("viewCart").hidden = true; }
+D("addBtn").onclick = () => { addToCart(cur, size); D("addBtn").classList.add("done"); D("addBtn").textContent = "Añadido al carrito ✓"; D("viewCart").hidden = false; };
+D("viewCart").onclick = () => D("cart").hidden = false;
+
+/* Reglas sobre la foto: el pecho se mide en la silueta real de cada camiseta */
+function pill(x, y, label){ const w = label.length * 13.5 + 30; return `<rect x="${x - w / 2}" y="${y - 19}" width="${w}" height="38" rx="19" fill="#fff"/><text x="${x}" y="${y + 8}" text-anchor="middle">${label}</text>`; }
+function drawMeasure(){
+  D("fFront").querySelector(".measure")?.remove();
+  if (!measuring) return;
+  const it = cur, m = measures(size), W = 1000 * it.aspect, L = it.bodyL * W, R = it.bodyR * W, cy = it.chestY * 1000 + 40;
+  const ln = 'stroke="#fff" stroke-width="3" stroke-dasharray="10 8"', cap = 'stroke="#fff" stroke-width="3"';
+  let s = `<path d="M${L} ${cy}H${R}" ${ln}/><path d="M${L} ${cy - 14}v28M${R} ${cy - 14}v28" ${cap}/>${pill((L + R) / 2, cy - 40, "Pecho " + cm(m.pecho))}`;
+  s += `<path d="M${W + 34} 20V980" ${ln}/><path d="M${W + 20} 20h28M${W + 20} 980h28" ${cap}/>${pill(W + 34, 500, "Largo " + cm(m.largo))}`;
+  s += pill(W * .86, 60, "Manga " + cm(m.manga));
+  if (fitDone){
+    const half = (R - L) / 2, bw = half * (bodyChest() / 2) / m.pecho, holg = m.pecho * 2 - bodyChest(), cx = (L + R) / 2;
+    s += `<path d="M${cx - bw} ${cy + 40}V${cy + 300}M${cx + bw} ${cy + 40}V${cy + 300}" stroke="#2BD46A" stroke-width="4" stroke-dasharray="12 8"/>`;
+    s += `<rect x="${cx - 230}" y="${cy + 312}" width="460" height="38" rx="19" fill="#2BD46A"/><text x="${cx}" y="${cy + 339}" text-anchor="middle">Tú ${bodyChest()} cm · holgura ${holg >= 0 ? "+" : ""}${holg} cm</text>`;
+  }
+  D("fFront").insertAdjacentHTML("beforeend", `<svg class="measure" viewBox="0 0 ${W} 1000" aria-hidden="true">${s}</svg>`);
+}
+/* Haz tu estampado: el diseño se pinta sobre la camiseta lisa (recortado a su silueta, con la tela notándose debajo)
+   y se ve igual en la ficha y en la camiseta colgada en 3D. */
+const loadImg = src => new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src; });
+async function logoGuia(oscuro){                                 // el logo blanco de la marca; en la camiseta blanca, en negro
+  const img = await loadImg("img/logo-blanco.png"); if (!oscuro) return img;
+  const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const x = c.getContext("2d");
+  x.drawImage(img, 0, 0); x.globalCompositeOperation = "source-in"; x.fillStyle = "#0A0A0C"; x.fillRect(0, 0, c.width, c.height); return c;
+}
+// Delante y detrás: cada lado (it.lados.frente / .espalda) tiene su diseño, tamaño, altura e idea. it.lado = el que se está editando.
+const ladoActual = it => it.lados[it.lado];
+async function compose(it, lado = it.lado){
+  const L = it.lados[lado], frente = lado === "frente";
+  if (!L.design && frente) L.design = await logoGuia(it.color === "Blanco");   // delante, el logo hace de guía y se mueve con Tamaño y Altura
+  const base = await loadImg(it.lisa);
+  const c = L.canvas || document.createElement("canvas"); c.width = base.width; c.height = base.height;
+  const x = c.getContext("2d"); x.clearRect(0, 0, c.width, c.height); x.drawImage(base, 0, 0);
+  const W = c.width, H = c.height, d = L.design;
+  if (d){
+    // Ancho según la barra "Tamaño" (100 % = todo el cuerpo), sin pasarse de alto: cabe entre el cuello (.2) y el bajo (.985) de la foto.
+    // Los diseños del cliente arrancan desde el bajo y suben (estilo de la marca): la camiseta recorta lo que sobra, como en la colección.
+    // "Altura" los sube desde ahí. El logo de guía, en cambio, va al pecho y "Altura" lo mueve hacia abajo.
+    const CUELLO = .2 * H, BAJO = .985 * H, abajo = L.ancla === "abajo";
+    const tope = abajo ? BAJO - L.off * H : (it.chestY - .17 + L.off) * H;
+    const maxH = Math.max(.15 * H, abajo ? tope - CUELLO : BAJO - tope);
+    let bw = (it.bodyR - it.bodyL) * W * L.size, dh = bw * d.height / d.width;
+    if (dh > maxH){ bw *= maxH / dh; dh = maxH; }
+    const top = abajo ? tope - dh : tope;
+    const cx = (it.bodyL + it.bodyR) / 2 * W;
+    x.save(); x.globalCompositeOperation = "source-atop";
+    x.drawImage(d, cx - bw / 2, top, bw, dh); x.restore();
+    if (it.color === "Blanco"){ x.save(); x.globalCompositeOperation = "multiply"; x.globalAlpha = .6; x.drawImage(base, 0, 0); x.restore(); }
+  }
+  L.canvas = c; L.url = c.toDataURL("image/png");
+  if (frente){ it.composed = c; it.composedURL = L.url; }
+  // La camiseta colgada (y el visor, que comparte material) cambia a la nueva imagen.
+  // Ojo: es MeshBasicMaterial (la foto trae su luz): no tiene emissiveMap; ponérselo rompía el visor (pantalla vacía al abrir).
+  const mesh = it.full?.[frente ? 0 : 1];
+  if (mesh){
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    mesh.material.map = t; mesh.material.needsUpdate = true; mesh.userData.map = t;
+    if (mesh.customDepthMaterial){ mesh.customDepthMaterial.map = t; mesh.customDepthMaterial.needsUpdate = true; }
+  }
+  if (cur === it && !D("detail").hidden){ const img = D(frente ? "fFront" : "fBack").querySelector("img"); if (img) img.src = L.url; if (frente) drawMeasure(); }
+  renderCart();
+}
+// Selector Delante / Detrás: cambia qué lado editan los botones y las barras, y gira la camiseta del visor hacia ese lado.
+function syncLado(it){
+  const L = ladoActual(it);
+  document.querySelectorAll("#dLado button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lado === it.lado));
+  D("dSize").value = Math.round(L.size * 100); D("dOff").value = Math.round(L.off * 100);
+  // Con un diseño de IA ya hecho, el recuadro sirve para pedir cambios sobre él
+  const hay = !!L.plan;
+  D("dIA").textContent = hay ? "✨ Aplicar cambio" : "✨ Diseñar mi camiseta";
+  D("dIdea").placeholder = hay ? "Pide un cambio: quítale el nombre, ponle alas, hazlo rojo…" : 'Ej.: ángel con alas y rayos "FE" (texto entre comillas)';
+  if (!hay) D("dIdea").value = L.idea || "";
+  D("dOtra").hidden = D("dNuevo").hidden = !hay;
+  D("dQuitar").hidden = it.lado !== "espalda" || !L.design;
+  D("dColor").textContent = `${it.color} · ${conEspalda(it) ? "tu diseño delante y detrás" : "tu diseño delante, espalda lisa"}`;
+  D("dPrice").textContent = money(it.price);                       // 34,50 € un lado · 38,50 € con espalda
+}
+D("dLado").onclick = e => {
+  const b = e.target.closest("[data-lado]"); if (!b || !cur?.custom) return;
+  cur.lado = b.dataset.lado; syncLado(cur); dvFlipTo = cur.lado === "espalda" ? Math.PI : 0;
+};
+D("dQuitar").onclick = () => {                                     // dejar la espalda lisa otra vez
+  if (!cur?.custom) return; Object.assign(cur.lados.espalda, { design: null, arte: null, plan: null, idea: "", ideaBase: "", userDesign: false });
+  syncLado(cur); compose(cur, "espalda");
+};
+D("dFile").onchange = async e => {
+  const f = e.target.files[0]; if (!f || !cur?.custom) return;
+  const url = URL.createObjectURL(f), L = ladoActual(cur);
+  try { L.design = await loadImg(url); Object.assign(L, { userDesign: true, idea: "", plan: null, arte: null, size: 1.08, off: 0, ancla: "abajo" }); compose(cur); syncLado(cur); }
+  catch { D("rec").hidden = false; D("rec").textContent = "No se pudo abrir esa imagen. Prueba con un PNG o JPG."; }
+};
+/* Diséñalo con IA: /api/estampado (servidor, guarda la clave de Pollinations) dibuja la idea sobre fondo blanco;
+   aquí se quita ese fondo (solo el blanco que toca los bordes, los blancos de dentro del dibujo se quedan) y se pinta como un diseño subido. */
+// El fondo nunca sale del todo liso (degradados, humo), así que no se recorta: se funde. En la camiseta negra lo oscuro
+// se vuelve transparente poco a poco (y al revés en la blanca); como la tela es de ese mismo color, el dibujo queda igual pero sin "cuadro".
+function quitarFondo(img, negro){                               // negro: camiseta negra (fondo oscuro); si no, blanca
+  const c = document.createElement("canvas"), W = c.width = img.width, H = c.height = img.height, x = c.getContext("2d");
+  x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, W, H), p = d.data;
+  for (let i = 0; i < p.length; i += 4){
+    const v = negro ? Math.max(p[i], p[i + 1], p[i + 2]) : 255 - Math.min(p[i], p[i + 1], p[i + 2]);
+    p[i + 3] = Math.round(255 * Math.min(1, Math.max(0, (v - 18) / 60)));
+  }
+  x.putImageData(d, 0, 0); return c;
+}
+// El texto del cliente (entre comillas) lo escribe la página, no la IA: así sale siempre bien escrito.
+// Lettering estilo streetwear: grande, encima de la parte baja del dibujo,
+// partido en varias líneas si es largo. Cada "Otra versión" cambia de estilo: gótica cromada, script de brocha, grafiti.
+// Un título corto va ARRIBA, enorme, en gótica metálica de color;
+// una frase larga va ABAJO en script de color (Made With Love, Born Loud Stay Untamed). Contorno oscuro y brillo del mismo color.
+// Cada "Otra versión" cambia de estilo y de color.
+const METAL = {                                   // degradados metálicos de la colección
+  oro:    ["#FFF7C2", "#F7C93A", "#B07A06", "#FFE27A"],
+  hielo:  ["#FFFFFF", "#A9D8FF", "#2F6FD0", "#D6ECFF"],
+  sangre: ["#FFD6D6", "#F0313B", "#7A0610", "#FF8A8A"],
+  cromo:  ["#FFFFFF", "#B9B9C2", "#5E5E68", "#F2F2F5"],
+  rosa:   ["#FFE0F0", "#FF4FA3", "#9C1458", "#FF9CCB"],
+};
+const LETTERING = [
+  { font: "Pirata One", sitio: "arriba", metal: "oro" },
+  { font: "Yellowtail", sitio: "abajo", metal: "rosa" },
+  { font: "Pirata One", sitio: "arriba", metal: "hielo" },
+  { font: "Sedgwick Ave Display", sitio: "abajo", metal: "cromo", mayus: true },
+  { font: "Pirata One", sitio: "arriba", metal: "sangre" },
+  { font: "Yellowtail", sitio: "abajo", metal: "cromo" },
+];
+let letteringN = 0;
+// Una línea de texto recta o en arco (los títulos de streetwear van curvados). Llama a fn(texto, x, y) con el lienzo ya colocado.
+function recorrer(x, l, cx, y, arco, fn){
+  if (!arco){ x.textAlign = "center"; fn(l, cx, y); return; }
+  const R = arco, letras = [...l], an = letras.map(ch => x.measureText(ch).width), total = an.reduce((a, b) => a + b, 0);
+  let acc = 0; x.textAlign = "center";
+  letras.forEach((ch, i) => {
+    const a = (acc + an[i] / 2 - total / 2) / R; acc += an[i];
+    x.save(); x.translate(cx + R * Math.sin(a), y + R - R * Math.cos(a)); x.rotate(a); fn(ch, 0, 0); x.restore();
+  });
+}
+// Lettering con capas, como los títulos de la colección: brillo de color, volumen 3D, contorno grueso, filo fino y relleno metálico
+function letrero(x, lineas, cx, y0, salto, px, m, negra, arco){
+  const prof = Math.max(3, Math.round(px * .08)), oscuro = negra ? "#050507" : "#FFFFFF";
+  const todas = fn => lineas.forEach((l, i) => recorrer(x, l, cx, y0 + i * salto, arco, fn));
+  x.lineJoin = "round";
+  // 1) brillo y contorno grueso, que abarca también el volumen
+  x.save(); x.shadowColor = m[1]; x.shadowBlur = px * .35; x.lineWidth = px * .2; x.strokeStyle = oscuro;
+  todas((t, X, Y) => { x.strokeText(t, X, Y); x.strokeText(t, X + prof * .5, Y + prof); }); x.restore();
+  // 2) volumen 3D hacia abajo, en el tono oscuro del metal
+  x.fillStyle = m[2]; for (let k = prof; k >= 1; k--) todas((t, X, Y) => x.fillText(t, X + k * .5, Y + k));
+  // 3) filo fino y relleno con degradado metálico
+  x.lineWidth = Math.max(2, px * .04); x.strokeStyle = negra ? "rgba(255,255,255,.9)" : "#0A0A0C";
+  todas((t, X, Y) => {
+    const g = x.createLinearGradient(0, Y - px * .8, 0, Y + px * .1);
+    g.addColorStop(0, m[0]); g.addColorStop(.45, m[1]); g.addColorStop(.55, m[3]); g.addColorStop(1, m[2]);
+    x.strokeText(t, X, Y); x.fillStyle = g; x.fillText(t, X, Y);
+  });
+}
+// Frases cortas a los lados, apiladas palabra a palabra en script de color (como "Fight / For / Glory" en las camisetas de rap vintage)
+async function frasesLado(x, extras, W, H, negra, metal){
+  await document.fonts.load('80px "Yellowtail"').catch(() => {});
+  const px = W * .062, m = METAL[metal];
+  extras.slice(0, 2).forEach((frase, i) => {
+    const palabras = frase.split(/\s+/), izq = i === 0, X = izq ? W * .12 : W * .88, y0 = H * (izq ? .4 : .52);
+    x.font = `${px}px "Yellowtail", cursive`; x.textAlign = izq ? "left" : "right"; x.lineJoin = "round";
+    palabras.forEach((p, k) => {
+      const Y = y0 + k * px * 1.02;
+      x.save(); x.shadowColor = m[1]; x.shadowBlur = px * .3; x.lineWidth = px * .18; x.strokeStyle = negra ? "#050507" : "#FFFFFF"; x.strokeText(p, X, Y); x.restore();
+      x.fillStyle = m[1]; x.fillText(p, X, Y);
+    });
+  });
+}
+async function ponerTexto(arte, texto, negra, extras = []){
+  const W = arte.width, H = arte.height, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d"); x.drawImage(arte, 0, 0);
+  let L = LETTERING[letteringN++ % LETTERING.length];
+  if (texto){
+    const corto = texto.length <= 14;               // un título cabe arriba; una frase larga queda mejor abajo
+    if (!corto && L.sitio === "arriba") L = { ...L, font: "Yellowtail", sitio: "abajo" };
+    // En mayúsculas la gótica no se lee ("KING" parecía "KNG"): para títulos en mayúsculas, letra metal
+    if (L.font === "Pirata One" && texto === texto.toUpperCase() && /[A-ZÁÉÍÓÚÑ]/.test(texto)) L = { ...L, font: "Metal Mania" };
+    const frase = L.mayus ? texto.toUpperCase() : texto, m = METAL[L.metal];
+    await document.fonts.load(`200px "${L.font}"`).catch(() => {});
+    // Reparte las palabras en 1–3 líneas buscando la letra más grande que quepa a lo ancho
+    const palabras = frase.split(/\s+/); let mejor = null;
+    for (let n = 1; n <= Math.min(3, palabras.length); n++){
+      const lineas = [], porLinea = Math.ceil(palabras.length / n);
+      for (let i = 0; i < palabras.length; i += porLinea) lineas.push(palabras.slice(i, i + porLinea).join(" "));
+      x.font = `100px "${L.font}", serif`;
+      // .78 del ancho: el dibujo es algo más ancho que el cuerpo (tamaño 108 %) y la camiseta recortaría las letras de los lados
+      const px = Math.min(W * (L.sitio === "arriba" ? .27 : .19), ...lineas.map(l => 100 * W * .78 / x.measureText(l).width), H * .3 / lineas.length);
+      if (!mejor || px > mejor.px) mejor = { lineas, px };
+    }
+    const { lineas, px } = mejor, salto = px * .92;
+    // Arriba: un poco separado del cuello y, si es una sola línea, en arco. Abajo: por encima del bajo (la camiseta recorta el último trozo)
+    const arco = L.sitio === "arriba" && lineas.length === 1 ? W * 1.15 : 0;
+    const primera = L.sitio === "arriba" ? H * .05 + px * .95 : H * .87 - (lineas.length - 1) * salto;
+    x.font = `${px}px "${L.font}", serif`;
+    letrero(x, lineas, W / 2, primera, salto, px, m, negra, arco);
+  }
+  // Las frases de los lados, en un color distinto al del título
+  if (extras.length) await frasesLado(x, extras, W, H, negra, { oro: "rosa", rosa: "oro", hielo: "oro", sangre: "hielo", cromo: "rosa" }[L.metal] || "oro");
+  return c;
+}
+// Grano de impresión vintage: pequeños poros donde la tinta no agarró, como en las fotos de la colección
+function grano(c){
+  const x = c.getContext("2d"), d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+  for (let i = 3; i < p.length; i += 4){ const r = Math.random(); if (r < .045) p[i] *= .35 + r * 8; else if (r < .2) p[i] *= .9; }
+  x.putImageData(d, 0, 0); return c;
+}
+/* Diseñar con IA, en tres modos ("que se vaya mejorando a partir de la idea"):
+   · nuevo  → la primera vez: la idea del cliente
+   · cambio → retoca el diseño que hay ("quítale el nombre", "ponle alas"): si solo cambian las letras, no se redibuja
+   · otra   → otra versión del mismo diseño (otra semilla y alterna collage / serigrafía)
+   L.plan guarda lo que entendió el director; L.arte, el dibujo sin letras (para volver a rotular sin gastar). */
+async function pedirDiseno(modo){
+  const it = cur, lado = cur?.lado; if (!it?.custom) return;      // el lado se fija al pulsar, por si cambia mientras dibuja
+  const L = it.lados[lado], negra = it.color !== "Blanco", escrito = D("dIdea").value.trim();
+  const idea = modo === "otra" ? L.ideaBase : escrito;
+  if (!idea || idea.length < 3){ D("rec").hidden = false; D("rec").textContent = modo === "cambio" ? "Escribe qué quieres cambiar (por ejemplo: quítale el nombre)." : "Escribe primero tu idea (por ejemplo: un tigre con corona)."; return; }
+  const botones = [D("dIA"), D("dOtra"), D("dNuevo")]; botones.forEach(b => b.disabled = true);
+  D(modo === "otra" ? "dOtra" : "dIA").textContent = "Dibujando… (unos segundos)"; D("rec").hidden = true;
+  try {
+    const cuerpo = { idea, color: negra ? "black" : "white" };
+    if (modo === "nuevo" || modo === "otra") cuerpo.estilo = (L.versiones = (L.versiones || 0) + 1) % 2 ? "collage" : "serigrafia";
+    if (modo !== "nuevo"){ cuerpo.anterior = L.plan; cuerpo.otra = modo === "otra"; }
+    const r = await fetch("/api/estampado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "La IA no pudo dibujarlo ahora. Prueba otra vez.");
+    if ((r.headers.get("Content-Type") || "").includes("json")){
+      // Solo cambian las letras: mismo dibujo, mismo estilo de lettering, al instante
+      const { plan } = await r.json(); L.plan = plan; letteringN = L.letraN ?? letteringN;
+      L.design = plan.texto || plan.extras?.length ? await ponerTexto(L.arte, plan.texto, negra, plan.extras || []) : L.arte;
+    } else {
+      const url = URL.createObjectURL(await r.blob());
+      try { L.plan = JSON.parse(decodeURIComponent(r.headers.get("X-Plan") || "")); } catch { L.plan = null; }
+      // La frase a rotular la decide el servidor (comillas, o la idea entera si es un lema) y llega en la cabecera X-Texto
+      const texto = decodeURIComponent(r.headers.get("X-Texto") || "") || (modo === "nuevo" ? (idea.match(/["“«]([^"”»]{1,60})["”»]/) || [])[1]?.trim() : "");
+      let extras = []; try { extras = JSON.parse(decodeURIComponent(r.headers.get("X-Extras") || "") || "[]"); } catch {}
+      L.arte = grano(quitarFondo(await loadImg(url), negra)); URL.revokeObjectURL(url);
+      if (modo === "cambio") letteringN = L.letraN ?? letteringN; else L.letraN = letteringN;   // un retoque conserva el estilo de letras
+      L.design = texto || extras.length ? await ponerTexto(L.arte, texto, negra, extras) : L.arte;
+      // Estilo de la marca: estampado enorme que arranca desde el bajo y sube. El cliente puede ajustarlo con las barras.
+      if (modo === "nuevo") Object.assign(L, { size: 1.08, off: 0, ancla: "abajo", ideaBase: idea });
+    }
+    Object.assign(L, { userDesign: true, idea: modo === "cambio" ? `${L.idea} · cambio: ${escrito}` : modo === "nuevo" ? idea : L.idea });
+    if (modo !== "otra") D("dIdea").value = "";
+    await compose(it, lado);
+  } catch (err){ D("rec").hidden = false; D("rec").textContent = err.message; }
+  finally { botones.forEach(b => b.disabled = false); if (it.lado === lado) syncLado(it); }
+}
+D("dIA").onclick = () => pedirDiseno(ladoActual(cur)?.plan ? "cambio" : "nuevo");
+D("dOtra").onclick = () => pedirDiseno("otra");
+D("dNuevo").onclick = () => {                                      // empezar de cero en este lado
+  if (!cur?.custom) return; const L = ladoActual(cur), frente = cur.lado === "frente";
+  Object.assign(L, { design: null, arte: null, plan: null, idea: "", ideaBase: "", userDesign: false, size: frente ? .62 : 1.08, off: 0, ancla: frente ? undefined : "abajo" });
+  D("dIdea").value = ""; compose(cur); syncLado(cur);
+};
+D("dSize").oninput = e => { if (cur?.custom){ ladoActual(cur).size = e.target.value / 100; compose(cur); } };
+D("dOff").oninput = e => { if (cur?.custom){ ladoActual(cur).off = e.target.value / 100; compose(cur); } };
+/* Probador con cámara (Decart, modelo Lucy VTON): la cámara del cliente + la foto de la camiseta → se ve con ella puesta en directo.
+   El permiso lo da /api/tokens (servidor), que guarda la clave; la página nunca la ve. */
+const DECART_SDK = "https://cdn.jsdelivr.net/npm/@decartai/sdk@0.2.14/+esm";
+let tryRt = null, tryCam = null, tryItem = null, tryTimer = 0, tryLeft = 0, tryBusy = false;
+const TRY_SECONDS = 60;                                   // cada prueba dura como mucho 60 s: ahorra créditos (el servidor corta a los 180 s)
+const tryMsg = t => { D("tryMsg").textContent = t; };
+const tryPrompt = it => `Substitute the current top with ${it.color === "Blanco" ? "a white" : "a black"} oversized streetwear t-shirt with a relaxed boxy fit and dropped shoulders, with exactly the printed graphic shown in the reference image on the front`;
+async function garmentBlob(it){
+  // La foto de la camiseta sobre fondo blanco, cuadrada (Decart funciona mejor así)
+  const img = await loadImg(it.composedURL || it.front), N = 1024, c = document.createElement("canvas"); c.width = c.height = N;
+  const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, N, N);
+  const k = Math.min(N * .9 / img.width, N * .9 / img.height); x.drawImage(img, (N - img.width * k) / 2, (N - img.height * k) / 2, img.width * k, img.height * k);
+  return new Promise(ok => c.toBlob(ok, "image/jpeg", .92));
+}
+function tryLabel(it){ tryItem = it; D("tryName").textContent = it.name; D("tryThumb").src = it.composedURL || it.front; }
+async function tryShow(it){
+  tryLabel(it);
+  if (!tryRt || tryBusy) return;
+  tryBusy = true; tryMsg("Cambiando de camiseta…");
+  try { await tryRt.set({ prompt: tryPrompt(it), image: await garmentBlob(it), enhance: false }); tryMsg(""); }
+  catch (e) { console.error("probador set", e); tryMsg("No se pudo cambiar de camiseta."); }
+  finally { tryBusy = false; }
+}
+function tryCountdown(){
+  clearInterval(tryTimer); tryLeft = TRY_SECONDS;
+  const tick = () => { D("tryTime").textContent = `En directo · se cierra en ${tryLeft} s`; if (tryLeft-- <= 0) stopTryOn(); };
+  tick(); tryTimer = setInterval(tick, 1000);
+}
+async function startTryOn(it){
+  if (tryRt || tryCam) return;                           // nunca dos sesiones a la vez (cada una gasta)
+  D("tryon").hidden = false; tryLabel(it); D("tryTime").textContent = "Así te queda, en directo";
+  tryMsg("Encendiendo la cámara…");
+  try {
+    if (!navigator.mediaDevices?.getUserMedia) throw Object.assign(new Error("sin cámara"), { name: "NoCamera" });
+    tryCam = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });   // el recuadro recorta al centro: cara y torso
+    D("tryOut").srcObject = tryCam; D("tryOut").classList.add("selfie");   // mientras conecta, te ves como en un espejo
+    tryMsg("Conectando el probador…");
+    // El permiso se pide ANTES de abrir la sesión: si falta la clave, no se gasta nada
+    const r = await fetch("/api/tokens", { method: "POST" });
+    if (!r.ok){ const j = await r.json().catch(() => ({})); throw Object.assign(new Error(j.error || "token"), { name: r.status === 500 ? "NoKey" : "TokenError" }); }
+    const { apiKey } = await r.json();
+    const { createDecartClient, models } = await import(DECART_SDK);
+    const client = createDecartClient({ apiKey });
+    tryRt = await client.realtime.connect(tryCam, {
+      model: models.realtime("lucy-vton-latest"),
+      initialState: { prompt: { text: tryPrompt(it), enhance: false }, image: await garmentBlob(it) },   // la camiseta va puesta desde el primer fotograma
+      retries: 0,                                         // sin reintentos que gasten
+      mirror: true,                                       // el SDK voltea la cámara ANTES de enviarla: te ves como en un espejo y el estampado sale con las letras derechas
+      onRemoteStream: stream => { D("tryOut").classList.remove("selfie"); D("tryOut").srcObject = stream; tryMsg(""); tryCountdown(); },
+      onConnectionChange: st => { if (st === "disconnected" && tryRt) stopTryOn(); },
+    });
+    if (D("tryon").hidden) stopTryOn();                   // se cerró mientras conectaba
+  } catch (err) {
+    console.error("probador", err);
+    const n = err?.name;
+    tryMsg(n === "NotAllowedError" || n === "SecurityError" || n === "NoCamera"
+      ? "Para probártela necesitamos usar tu cámara. Dale permiso en el navegador (en la vista previa de Claude la cámara está bloqueada)."
+      : n === "NoKey" ? "El probador aún no está activado: falta conectar la cuenta de Decart."
+      : "El probador no responde ahora mismo. Inténtalo de nuevo en un momento.");
+    try { tryRt?.disconnect(); } catch {}
+    tryRt = null; tryCam?.getTracks().forEach(t => t.stop()); tryCam = null;
+  }
+}
+function stopTryOn(){
+  clearInterval(tryTimer);
+  try { tryRt?.disconnect(); } catch {}
+  tryRt = null; tryCam?.getTracks().forEach(t => t.stop()); tryCam = null;
+  D("tryOut").srcObject = null; D("tryOut").classList.remove("selfie"); D("tryon").hidden = true; D("tryTime").textContent = "Así te queda, en directo";
+}
+// Si el cliente cambia de pestaña o cierra la página, se corta la sesión (no se gastan créditos en vacío)
+document.addEventListener("visibilitychange", () => { if (document.hidden && tryRt) stopTryOn(); });
+addEventListener("pagehide", () => { if (tryRt) stopTryOn(); });
+D("tryBtn").onclick = () => startTryOn(cur);
+D("tryClose").onclick = stopTryOn;
+const tryStep = dir => { const list = byZone(tryItem.collection); tryShow(list[(list.indexOf(tryItem) + dir + list.length) % list.length]).catch(() => tryMsg("No se pudo cambiar de camiseta.")); };
+D("tryPrev").onclick = () => tryStep(-1); D("tryNext").onclick = () => tryStep(1);
+D("tryAdd").onclick = () => { addToCart(tryItem, size); D("tryAdd").textContent = "Añadida ✓"; setTimeout(() => D("tryAdd").textContent = "Añadir", 1600); };
+
+D("measureBtn").onclick = () => setMeasuring(!measuring);
+D("fitBtn").onclick = () => {
+  D("fAlt").value = profile.alt; D("fPeso").value = profile.peso; D("fPecho").value = profile.pecho;
+  D("fAjuste").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === profile.ajuste));
+  D("fitResult").hidden = true; D("fitForm").hidden = false; D("fit").hidden = false;
+};
+D("fAjuste").onclick = e => { const b = e.target.closest("button"); if (!b) return; D("fAjuste").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); };
+D("fitForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const clamp = (v, a, b, d) => { v = parseFloat(String(v).replace(",", ".")); return isFinite(v) ? Math.min(b, Math.max(a, v)) : d; };
+  profile.alt = clamp(D("fAlt").value, 140, 215, 176); profile.peso = clamp(D("fPeso").value, 40, 160, 74);
+  profile.pecho = D("fPecho").value ? clamp(D("fPecho").value, 70, 150, "") : "";
+  profile.ajuste = D("fAjuste").querySelector('[aria-pressed="true"]').dataset.v;
+  fitDone = true; try { localStorage.setItem("me-fit", JSON.stringify(profile)); } catch {}
+  const s = recommend(), m = measures(s), body = bodyChest(), garment = m.pecho * 2, max = 160;
+  const largoIdeal = Math.round(profile.alt * .42);
+  const largoTxt = m.largo - largoIdeal > 5 ? "y te quedará algo larga, como se lleva el oversize" : largoIdeal - m.largo > 4 ? "aunque de largo te quedará algo corta" : "con un largo a tu medida";
+  D("fitResult").innerHTML = `<div class="big">Tu talla: <b>${s}</b></div>
+    <div class="cmp"><span>Pecho</span><div class="track"><div class="g" style="width:${garment / max * 100}%"></div><div class="b" style="left:${body / max * 100}%"></div></div><span>${garment} cm</span></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px">Tu pecho${profile.pecho ? "" : " (estimado)"}: ${body} cm. La ${s} te da ${garment - body} cm de holgura, ${largoTxt}.${profile.pecho ? "" : " Si añades tu contorno de pecho, el cálculo es más fino."}</div>
+    <button class="apply" id="useSize" type="button">${D("detail").hidden ? "Listo, a mirar camisetas" : `Usar la ${s} y medir`}</button>`;
+  D("fitResult").innerHTML += `<button class="viewcart" id="again" type="button">Volver a calcular</button>`;
+  D("fitForm").hidden = true; D("fitResult").hidden = false;
+  D("again").onclick = () => { D("fitResult").hidden = true; D("fitForm").hidden = false; };
+  D("hint").textContent = `Tu talla: ${s} · la verás marcada en cada camiseta`;
+  D("useSize").onclick = () => { D("fit").hidden = true; if (D("detail").hidden) return; openDetail(cur); setMeasuring(true); };
+});
+
+/* ================= Carrito ================= */
+let cart = [];
+// El carrito guardado se valida entero (id, talla y cantidad) porque luego se pinta como HTML: nada raro entra en la página
+try { cart = JSON.parse(localStorage.getItem("me-cart") || "[]").filter(l => l && ITEMS.some(a => a.id === l.id) && SIZES.includes(l.size))
+  .map(l => ({ id: l.id, size: l.size, qty: Math.min(20, Math.max(1, Math.floor(Number(l.qty)) || 1)) })); } catch { cart = []; }
+const save = () => { try { localStorage.setItem("me-cart", JSON.stringify(cart)); } catch {} };
+function addToCart(it, s){ const l = cart.find(x => x.id === it.id && x.size === s); l ? l.qty++ : cart.push({ id: it.id, size: s, qty: 1 }); save(); renderCart(); }
+function renderCart(){
+  const n = cart.reduce((a, l) => a + l.qty, 0); D("cartN").textContent = n; D("cartN").dataset.n = n;
+  D("lines").innerHTML = cart.length ? cart.map((l, i) => { const it = ITEMS.find(a => a.id === l.id);
+    return `<div class="line"><div class="thumb">${imgTag(it.composedURL || it.front)}</div><div><div class="n">${it.name}</div><div class="m">${it.color} · Talla ${l.size}</div>
+      <div class="qty"><button data-q="${i}" data-d="-1" aria-label="Quitar uno">−</button><span>${l.qty}</span><button data-q="${i}" data-d="1" aria-label="Añadir uno">+</button></div></div>
+      <div class="p">${money(it.price * l.qty)}</div></div>`; }).join("") : `<div class="empty">Tu carrito está vacío.<br>Date una vuelta por la tienda.</div>`;
+  const sub = cart.reduce((a, l) => a + ITEMS.find(x => x.id === l.id).price * l.qty, 0);
+  D("subtotal").textContent = money(sub);
+  renderCounter();
+  D("note").textContent = `Un estampado ${money(PRICE)} · delante y detrás ${money(PRICE_2)}. ${T.envio || ""}`;
+}
+D("lines").onclick = e => { const b = e.target.closest("[data-q]"); if (!b) return; const l = cart[b.dataset.q];
+  l.qty += +b.dataset.d; if (l.qty <= 0) cart.splice(b.dataset.q, 1); save(); renderCart(); };
+/* Pedido por WhatsApp: sin pasarela de pago. Se abre el chat de la tienda con el pedido escrito y allí una persona
+   explica el pago y el envío. Si hay camisetas personalizadas, antes se descarga una ficha (muestra + diseño + especificaciones)
+   para adjuntarla en el mismo chat: es una guía, se revisa con el cliente antes de hacerla. */
+const WHATSAPP = String(T.whatsapp || "").replace(/\D/g, "");   // tienda.config.js: prefijo sin "+" ni espacios
+const conEspalda = it => !!it.lados.espalda.design;
+// Ficha del pedido: una columna por lado diseñado (delante y, si hay, detrás). Arriba la muestra en la camiseta, debajo el diseño solo.
+async function fichaDiseno(it, lineas){
+  const lados = conEspalda(it) ? ["frente", "espalda"] : ["frente"], negra = it.color !== "Blanco";
+  for (const l of lados) if (!it.lados[l].canvas) await compose(it, l);
+  const B = 700, G = 40, W = G + lados.length * (B + G), textoY = 110 + 2 * (B + 60);
+  const datos = [`Camiseta ${negra ? "negra" : "blanca"} · ${lados.length > 1 ? "estampado delante y detrás" : "estampado delante"} · ${lineas.map(l => `talla ${l.size} × ${l.qty}`).join(", ")}`];
+  for (const l of lados){ const L = it.lados[l], n = l === "frente" ? "Delante" : "Detrás";
+    datos.push(`${n}: ${Math.round(L.size * 100)} % del ancho del pecho · altura ${L.off >= 0 ? "+" : ""}${Math.round(L.off * 100)} · ` +
+      (L.idea ? `idea: ${L.idea}` : L.userDesign ? "diseño subido por el cliente" : `logo de muestra de ${BRAND.name}`)); }
+  if (lados.some(l => it.lados[l].idea)) datos.push("Diseño hecho con IA: es una guía y puede variar. Se revisa con el cliente antes de estampar.");
+  const H = textoY + datos.length * 44 + 30, c = document.createElement("canvas"); c.width = Math.max(W, 1200); c.height = H; const x = c.getContext("2d");
+  x.fillStyle = "#16161A"; x.fillRect(0, 0, c.width, H);
+  const caja = (img, bx, by, fondo) => { x.fillStyle = fondo; x.fillRect(bx, by, B, B);
+    const s = Math.min((B - 40) / img.width, (B - 40) / img.height), w = img.width * s, h = img.height * s; x.drawImage(img, bx + (B - w) / 2, by + (B - h) / 2, w, h); };
+  x.fillStyle = "#fff"; x.font = "700 44px system-ui, sans-serif"; x.fillText(`${BRAND.name} · Diseño personalizado`, G, 72);
+  lados.forEach((l, i) => { const L = it.lados[l], bx = G + i * (B + G), n = l === "frente" ? "DELANTE" : "DETRÁS";
+    caja(L.canvas, bx, 110, "#2A2A30"); caja(L.design, bx, 110 + B + 60, negra ? "#0A0A0C" : "#FFFFFF");
+    x.font = "600 26px system-ui, sans-serif"; x.fillStyle = "#B9B9C2";
+    x.fillText(`${n} · muestra en la camiseta`, bx, 110 + B + 36); x.fillText(`${n} · diseño`, bx, 110 + 2 * B + 96); });
+  x.fillStyle = "#fff"; x.font = "500 28px system-ui, sans-serif";
+  datos.forEach((t, i) => x.fillText(t.length > 100 ? t.slice(0, 99) + "…" : t, G, textoY + 40 + i * 44));
+  return new Promise(ok => c.toBlob(ok, "image/png"));
+}
+D("checkout").onclick = async () => {
+  if (!cart.length){ D("note").textContent = "Añade algo antes de pedir."; return; }
+  if (!WHATSAPP){ D("note").textContent = "Falta poner el número de WhatsApp de la tienda."; return; }
+  const ventana = window.open("", "_blank");                     // se abre ya (si se espera a la ficha, el navegador lo bloquea)
+  const lineas = cart.map(l => ({ ...l, it: ITEMS.find(a => a.id === l.id) }));
+  const total = lineas.reduce((a, l) => a + l.it.price * l.qty, 0);
+  const custom = [...new Set(lineas.filter(l => l.it.custom).map(l => l.it))];
+  for (const it of custom){
+    const blob = await fichaDiseno(it, lineas.filter(l => l.it === it)), a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = `mi-diseno-${BRAND.name.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "-")}-${it.color === "Blanco" ? "blanca" : "negra"}.png`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+  const txt = [`Hola ${BRAND.name} 👋 Quiero hacer este pedido:`, "",
+    ...lineas.map(l => `• ${l.qty} × ${l.it.custom ? `Camiseta personalizada (${l.it.color === "Blanco" ? "blanca" : "negra"}, ${conEspalda(l.it) ? "delante y detrás" : "delante"})` : `${l.it.name} (${l.it.color})`} · Talla ${l.size} · ${money(l.it.price * l.qty)}`),
+    "", `Total camisetas: ${money(total)} (+ envío)`,
+    ...(custom.length ? ["", `📎 Os adjunto ${custom.length > 1 ? "las fichas" : "la ficha"} con mi diseño (se ${custom.length > 1 ? "han" : "ha"} descargado en mi móvil).`,
+      "Sé que el diseño está hecho con IA y es una guía: lo revisamos antes de estampar."] : []),
+    "", "¿Cómo seguimos con el pago y el envío?"].join("\n");
+  const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`;
+  ventana ? ventana.location = url : location.href = url;
+  D("note").textContent = custom.length ? "Se ha descargado la ficha de tu diseño: adjúntala en el chat de WhatsApp." : "Te abrimos WhatsApp con tu pedido.";
+};
+D("cartBtn").onclick = () => D("cart").hidden = false;
+D("infoBtn").onclick = () => D("info").hidden = false;
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => { D("cart").hidden = true; D("info").hidden = true; D("fit").hidden = true; });
+addEventListener("keydown", e => {
+  const modal = !D("cart").hidden || !D("info").hidden || !D("fit").hidden;
+  if (e.key === "Escape" && !D("tryon").hidden){ stopTryOn(); return; }
+  if (e.key === "Escape"){ if (modal){ D("cart").hidden = D("info").hidden = D("fit").hidden = true; } else if (!D("detail").hidden) closeDetail(); else goTo("entrada"); }
+  if (!D("detail").hidden && !modal){ if (e.key === "ArrowRight") step(1); if (e.key === "ArrowLeft") step(-1); }
+});
+renderCart();
+</script>
