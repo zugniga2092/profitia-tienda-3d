@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   if (freno) return res.status(429).json({ error: freno === "ip" ? "Espera un minuto antes de volver a probar" : "El probador está muy solicitado. Prueba en unos minutos." });
 
   const apiKey = (process.env.DECART_API_KEY || "").trim();
-  if (!apiKey) return res.status(500).json({ error: "Falta DECART_API_KEY en Vercel" });
+  if (!apiKey) return res.status(503).json({ error: "El probador con cámara no está activado en esta tienda (falta DECART_API_KEY)." });
 
   try {
     const client = createDecartClient({ apiKey });

@@ -102,7 +102,7 @@ export default async function handler(req, res) {
   if (!origenPermitido(origin)) return res.status(403).json({ error: "Origen no permitido" });
 
   const key = (process.env.POLLINATIONS_API_KEY || "").trim();
-  if (!key) return res.status(500).json({ error: "Falta POLLINATIONS_API_KEY en Vercel" });
+  if (!key) return res.status(503).json({ error: "El diseñador con IA no está activado en esta tienda (falta POLLINATIONS_API_KEY). Puedes subir tu diseño." });
 
   const idea = String(req.body?.idea || "").replace(/\s+/g, " ").trim().slice(0, 200);
   if (idea.length < 3) return res.status(400).json({ error: "Escribe tu idea" });
