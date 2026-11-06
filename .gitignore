@@ -19,3 +19,5 @@ desktop.ini
 *.log
 __pycache__/
 NUL
+
+.vercel

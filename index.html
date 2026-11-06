@@ -1549,6 +1549,8 @@ async function fichaDiseno(it, lineas){
 D("checkout").onclick = async () => {
   if (!cart.length){ D("note").textContent = "Añade algo antes de pedir."; return; }
   if (!WHATSAPP){ D("note").textContent = "Falta poner el número de WhatsApp de la tienda."; return; }
+  // Con el número de ejemplo no se abre WhatsApp: podría ser el de una persona real (la demo y las copias sin configurar)
+  if (WHATSAPP === "34600000000"){ D("note").textContent = "Esto es una demo: aquí se abriría el WhatsApp de la tienda con el pedido escrito. Pon tu número en tienda.config.js."; return; }
   const ventana = window.open("", "_blank");                     // se abre ya (si se espera a la ficha, el navegador lo bloquea)
   const lineas = cart.map(l => ({ ...l, it: ITEMS.find(a => a.id === l.id) }));
   const total = lineas.reduce((a, l) => a + l.it.price * l.qty, 0);
